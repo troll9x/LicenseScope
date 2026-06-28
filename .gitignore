@@ -1,0 +1,24 @@
+# .NET / WPF build artifacts
+**/bin/
+**/obj/
+
+# Publish output (keep only source, not built EXE)
+**/publish/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# NuGet
+*.nupkg
+packages/

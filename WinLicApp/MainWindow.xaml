@@ -1,0 +1,224 @@
+<Window x:Class="WinLicApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Windows Licensing &amp; Information Manager"
+        Icon="winlic_256.png"
+        Height="720" Width="1120" MinHeight="500" MinWidth="820"
+        WindowStartupLocation="CenterScreen"
+        Background="#f8f7fe">
+    <Window.Resources>
+
+        <!-- Sidebar action button -->
+        <Style x:Key="SideBtn" TargetType="Button">
+            <Setter Property="Background" Value="#e8e4f5"/>
+            <Setter Property="Foreground" Value="#2d2359"/>
+            <Setter Property="BorderBrush" Value="#c9c2e8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#ddd7f0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#cfc9e8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Danger button -->
+        <Style x:Key="DangerBtn" TargetType="Button" BasedOn="{StaticResource SideBtn}">
+            <Setter Property="Background" Value="#fef2f2"/>
+            <Setter Property="BorderBrush" Value="#fca5a5"/>
+            <Setter Property="Foreground" Value="#b91c1c"/>
+        </Style>
+
+        <!-- Utility button (clear, etc.) -->
+        <Style x:Key="UtilBtn" TargetType="Button" BasedOn="{StaticResource SideBtn}">
+            <Setter Property="Background" Value="#f4f2f9"/>
+            <Setter Property="BorderBrush" Value="#d4cdf0"/>
+            <Setter Property="Foreground" Value="#9c98b5"/>
+        </Style>
+
+        <!-- Language toggle — inactive -->
+        <Style x:Key="LangBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#9c98b5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontFamily" Value="Segoe UI Semibold"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#2d2359"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Language toggle — active -->
+        <Style x:Key="LangBtnActive" TargetType="Button" BasedOn="{StaticResource LangBtn}">
+            <Setter Property="Foreground" Value="#7c3aed"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ── Header ── -->
+        <Border Grid.Row="0" Background="#ece9fb"
+                BorderBrush="#d4cdf0" BorderThickness="0,0,0,1"
+                Padding="18,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: icon + title + admin status -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="winlic_256.png" Width="28" Height="28" Margin="0,0,10,0"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="TxtTitle"
+                                       FontFamily="Segoe UI Semibold" FontSize="16"
+                                       Foreground="#4c1d95"/>
+                            <TextBlock Text="  v1.0 (beta)"
+                                       FontFamily="Segoe UI" FontSize="11"
+                                       Foreground="#a78bfa" VerticalAlignment="Bottom"
+                                       Margin="0,0,0,1"/>
+                        </StackPanel>
+                        <TextBlock x:Name="AdminStatusText"
+                                   FontFamily="Segoe UI" FontSize="11" Margin="0,3,0,0"
+                                   Foreground="#6e6a8a"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right: language toggle + About + Elevate -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+
+                    <!-- EN | VI toggle -->
+                    <Border BorderBrush="#c9c2e8" BorderThickness="1" CornerRadius="5"
+                            Margin="0,0,8,0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="BtnLangEN" Content="EN"
+                                    Style="{StaticResource LangBtn}"
+                                    Click="BtnLangEN_Click"/>
+                            <Rectangle Width="1" Fill="#c9c2e8"/>
+                            <Button x:Name="BtnLangVIE" Content="VI"
+                                    Style="{StaticResource LangBtnActive}"
+                                    Click="BtnLangVIE_Click"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- About -->
+                    <Button x:Name="BtnAbout"
+                            Style="{StaticResource SideBtn}"
+                            HorizontalContentAlignment="Center"
+                            Margin="0,0,8,0"
+                            Click="BtnAbout_Click"/>
+
+                    <!-- Elevate -->
+                    <Button x:Name="BtnElevate"
+                            Style="{StaticResource SideBtn}"
+                            HorizontalContentAlignment="Center"
+                            Background="#f5f0ff" BorderBrush="#a78bfa" Foreground="#7c3aed"
+                            Visibility="Collapsed"
+                            Click="BtnElevate_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ── Body: sidebar + log ── -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="215"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar -->
+            <Border Grid.Column="0" Background="#f0edf9"
+                    BorderBrush="#d4cdf0" BorderThickness="0,0,1,0">
+                <StackPanel Margin="10,14">
+                    <TextBlock x:Name="LblReadOnly"
+                               FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold"
+                               Foreground="#9c98b5" Margin="4,0,0,4"/>
+                    <Button x:Name="BtnVersionInfo"  Style="{StaticResource SideBtn}"
+                            Click="BtnVersionInfo_Click"/>
+                    <Button x:Name="BtnSlmgrDli"     Style="{StaticResource SideBtn}"
+                            Click="BtnSlmgrDli_Click"/>
+                    <Button x:Name="BtnInspectKeys"  Style="{StaticResource SideBtn}"
+                            Click="BtnInspectKeys_Click"/>
+                    <Button x:Name="BtnPiracyCheck"  Style="{StaticResource SideBtn}"
+                            Click="BtnPiracyCheck_Click"/>
+
+                    <TextBlock x:Name="LblRequiresAdmin"
+                               FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold"
+                               Foreground="#ef4444" Margin="4,16,0,4"/>
+                    <Button x:Name="BtnTestKey"         Style="{StaticResource DangerBtn}"
+                            Click="BtnTestKey_Click"/>
+                    <Button x:Name="BtnRemoveLicense"   Style="{StaticResource DangerBtn}"
+                            Click="BtnRemoveLicense_Click"/>
+                    <Button x:Name="BtnResetActivation" Style="{StaticResource DangerBtn}"
+                            Click="BtnResetActivation_Click"/>
+
+                    <Separator Background="#d4cdf0" Margin="0,16,0,8"/>
+                    <Button x:Name="BtnClear" Style="{StaticResource UtilBtn}"
+                            HorizontalContentAlignment="Center"
+                            Click="BtnClear_Click"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Log (RichTextBox) -->
+            <RichTextBox x:Name="LogBox" Grid.Column="1"
+                         Background="#ffffff" BorderThickness="0"
+                         IsReadOnly="True" IsDocumentEnabled="True"
+                         VerticalScrollBarVisibility="Auto"
+                         FontFamily="Cascadia Code, Consolas, Courier New"
+                         FontSize="12" Padding="18,14">
+                <FlowDocument x:Name="LogDocument" PageWidth="9999"
+                              FontFamily="Cascadia Code, Consolas, Courier New"/>
+            </RichTextBox>
+        </Grid>
+
+        <!-- ── Status bar ── -->
+        <Border Grid.Row="2" Background="#ece9fb"
+                BorderBrush="#d4cdf0" BorderThickness="0,1" Padding="14,5">
+            <TextBlock x:Name="StatusBar"
+                       FontFamily="Segoe UI" FontSize="11" Foreground="#9c98b5"/>
+        </Border>
+    </Grid>
+</Window>
