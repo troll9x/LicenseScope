@@ -185,13 +185,26 @@ function Show-Menu {
     Write-Host "  1 -- OS Version & OEM BIOS Key"               -ForegroundColor White
     Write-Host "  2 -- License Channel & Type  (slmgr /dli)"    -ForegroundColor White
     Write-Host "  3 -- Inspect Keys & Activation Status"         -ForegroundColor White
-    $c = if ($isAdmin) { 'White' } else { 'DarkYellow' }
-    Write-Host "  4 -- Test & Install Product Key"               -ForegroundColor $c
-    Write-Host "  5 -- Uninstall License Key"                    -ForegroundColor $c
-    Write-Host "  6 -- Reset Activation (Rearm)"                 -ForegroundColor $c
+    Write-Host "  4 -- Test & Install Product Key         [!]"   -ForegroundColor Red
+    Write-Host "  5 -- Uninstall License Key              [!]"   -ForegroundColor Red
+    Write-Host "  6 -- Reset Activation (Rearm)           [!]"   -ForegroundColor Red
     Write-Host "  7 -- 3rd Party Activation Audit"               -ForegroundColor White
     Write-Host "  Q -- Quit"                                     -ForegroundColor DarkGray
     Write-Blank
+    Write-Host "  [!] These options make REAL changes to your Windows license." -ForegroundColor DarkRed
+    Write-Sep
+}
+
+function Show-About {
+    Write-Blank
+    Write-Host "  ABOUT" -ForegroundColor White
+    Write-Host "  WinLic Manager $SCRIPT_VERSION -- Windows Licensing & Information Manager" -ForegroundColor DarkCyan
+    Write-Host "  Author : Arden Nguyen Duc Huy" -ForegroundColor DarkCyan
+    Write-Host "  Repo   : https://github.com/ardennguyen/WinLic" -ForegroundColor DarkCyan
+    Write-Blank
+    Write-Host "  Options 1, 2, 3, 7 are read-only and safe for any user." -ForegroundColor Gray
+    Write-Host "  Options 4, 5, 6 make REAL changes to your Windows license" -ForegroundColor DarkRed
+    Write-Host "  and require Administrator privileges.  Use with care." -ForegroundColor DarkRed
     Write-Sep
 }
 
@@ -877,8 +890,14 @@ function Invoke-ActivationAudit {
 # =============================================================================
 # Main loop
 # =============================================================================
+$script:firstLoad = $true
+
 do {
     Show-Header
+    if ($script:firstLoad) {
+        Show-About
+        $script:firstLoad = $false
+    }
     Show-Menu
     $choice = (Read-Host "  Select option (1-7, Q to quit)").Trim().ToUpper()
     Write-Blank
