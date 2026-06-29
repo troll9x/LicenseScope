@@ -163,7 +163,7 @@ WinLic/
 │   └── WinLicApp.csproj             # Định nghĩa dự án .NET Framework 4.8 WPF
 ├── WinLicPS/                        # Công cụ PowerShell (CLI)
 │   ├── WinLicManager.ps1            # Script chính -- gương 7 tùy chọn của GUI
-│   └── settings.ini.template        # Mẫu cấu hình cho tùy chọn 7 (có hướng dẫn)
+│   └── settings.ini        # Mẫu cấu hình cho tùy chọn 7 (có hướng dẫn)
 └── README.md
 ```
 
@@ -187,7 +187,7 @@ Start-Process powershell -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Fil
 
 ```powershell
 # Sao chép mẫu và chỉnh sửa
-Copy-Item .\WinLicPS\settings.ini.template .\WinLicPS\settings.ini
+Copy-Item .\WinLicPS\settings.ini .\WinLicPS\settings.ini
 notepad .\WinLicPS\settings.ini
 ```
 

@@ -583,6 +583,61 @@ function Invoke-ActivationAudit {
     Write-Host "  OPTION 7 -- 3rd Party Activation Audit" -ForegroundColor Magenta
     Write-Sep
 
+    # ---- Settings & configuration summary -----------------------------------
+    :settingsLoop while ($true) {
+        $lists = Get-ScanLists
+
+        $iniStatus  = if (Test-Path $SETTINGS_FILE) { "[loaded]" } else { "[not found -- using built-in defaults]" }
+        $iniColor   = if (Test-Path $SETTINGS_FILE) { 'Green'    } else { 'DarkYellow' }
+
+        $extraPortCount  = ($lists.Ports    | Where-Object { $_ -notin $DEFAULT_PORTS    }).Count
+        $extraSvcCount   = ($lists.Services | Where-Object { $_ -notin $DEFAULT_SERVICES }).Count
+        $extraTaskCount  = ($lists.Tasks    | Where-Object { $_ -notin $DEFAULT_TASKS    }).Count
+        $extraProcCount  = ($lists.Processes| Where-Object { $_ -notin $DEFAULT_PROCS    }).Count
+        $extraFileCount  = @($lists.ExtraFiles).Count
+
+        Write-Host "  SCAN CONFIGURATION" -ForegroundColor White
+        Write-Host ("  Settings file:   {0}  " -f $SETTINGS_FILE) -NoNewline
+        Write-Host $iniStatus -ForegroundColor $iniColor
+        Write-Blank
+        Write-Host ("  {0,-18} {1}" -f "Ports to probe:", ($lists.Ports -join ", ")) -ForegroundColor $(if ($extraPortCount) { 'Cyan' } else { 'Gray' })
+        Write-Host ("  {0,-18} {1} built-in{2}" -f "Services:", $DEFAULT_SERVICES.Count, $(if ($extraSvcCount)  { "  + $extraSvcCount custom" }  else { "" })) -ForegroundColor $(if ($extraSvcCount)  { 'Cyan' } else { 'Gray' })
+        Write-Host ("  {0,-18} {1} built-in{2}" -f "Tasks:", $DEFAULT_TASKS.Count, $(if ($extraTaskCount) { "  + $extraTaskCount custom" } else { "" })) -ForegroundColor $(if ($extraTaskCount) { 'Cyan' } else { 'Gray' })
+        Write-Host ("  {0,-18} {1} built-in{2}" -f "Processes:", $DEFAULT_PROCS.Count, $(if ($extraProcCount)  { "  + $extraProcCount custom" }  else { "" })) -ForegroundColor $(if ($extraProcCount)  { 'Cyan' } else { 'Gray' })
+        Write-Host ("  {0,-18} {1}" -f "Extra file paths:", $(if ($extraFileCount) { "$extraFileCount custom" } else { "(none)" })) -ForegroundColor $(if ($extraFileCount) { 'Cyan' } else { 'Gray' })
+        Write-Blank
+        Write-Sep
+
+        Write-Blank
+        Write-Host "  Edit settings.ini to add custom ports, services, tasks, processes, or file" -ForegroundColor DarkCyan
+        Write-Host "  paths before scanning.  The file is at:" -ForegroundColor DarkCyan
+        Write-Host "    $SETTINGS_FILE" -ForegroundColor DarkGray
+        Write-Blank
+
+        $editChoice = Read-Host "  Edit settings.ini before scanning? (y/n/skip to proceed)"
+        if ($editChoice -match '^y(es)?$') {
+            if (Test-Path $SETTINGS_FILE) {
+                Write-Info "Opening settings.ini in Notepad -- close the window to continue..."
+                Start-Process notepad.exe -ArgumentList $SETTINGS_FILE -Wait
+                Write-Step "Reloading scan configuration..."
+                Write-Blank
+                # Loop back to show updated configuration
+            } else {
+                Write-Warn "settings.ini not found at: $SETTINGS_FILE"
+                Write-Info "The file should be in the same folder as WinLicManager.ps1."
+                Write-Info "If you cloned the repo, ensure WinLicPS\settings.ini exists."
+                Write-Blank
+                Read-Host "  Press Enter to continue with built-in defaults..."
+                break settingsLoop
+            }
+        } else {
+            break settingsLoop
+        }
+    }
+
+    Write-Blank
+    Write-Sep
+
     # Preamble ----------------------------------------------------------------
     Write-Host "  WHAT THIS SCAN CHECKS" -ForegroundColor White
     Write-Info "(1) KMS server name / registry  ->  detects local KMS emulators (KMSpico, KMSAuto, vlmcsd...)"
@@ -600,7 +655,6 @@ function Invoke-ActivationAudit {
     Write-Sep
     Write-Blank
 
-    $lists           = Get-ScanLists
     $suspiciousCount = 0
     $criticalKms     = $false
 
