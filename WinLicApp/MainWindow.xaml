@@ -173,31 +173,25 @@
             <Border Grid.Column="0" Background="#f0edf9"
                     BorderBrush="#d4cdf0" BorderThickness="0,0,1,0">
                 <StackPanel Margin="10,14">
-                    <TextBlock x:Name="LblReadOnly"
-                               FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold"
-                               Foreground="#9c98b5" Margin="4,0,0,4"/>
-                    <Button x:Name="BtnVersionInfo"  Style="{StaticResource SideBtn}"
+                    <Button x:Name="BtnVersionInfo"     Style="{StaticResource SideBtn}"
                             Click="BtnVersionInfo_Click"/>
-                    <Button x:Name="BtnSlmgrDli"     Style="{StaticResource SideBtn}"
+                    <Button x:Name="BtnSlmgrDli"        Style="{StaticResource SideBtn}"
                             Click="BtnSlmgrDli_Click"/>
-                    <Button x:Name="BtnInspectKeys"  Style="{StaticResource SideBtn}"
+                    <Button x:Name="BtnInspectKeys"     Style="{StaticResource SideBtn}"
                             Click="BtnInspectKeys_Click"/>
-                    <Button x:Name="BtnPiracyCheck"  Style="{StaticResource SideBtn}"
-                            Click="BtnPiracyCheck_Click"/>
-
-                    <TextBlock x:Name="LblRequiresAdmin"
-                               FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold"
-                               Foreground="#ef4444" Margin="4,16,0,4"/>
                     <Button x:Name="BtnTestKey"         Style="{StaticResource DangerBtn}"
                             Click="BtnTestKey_Click"/>
                     <Button x:Name="BtnRemoveLicense"   Style="{StaticResource DangerBtn}"
                             Click="BtnRemoveLicense_Click"/>
                     <Button x:Name="BtnResetActivation" Style="{StaticResource DangerBtn}"
                             Click="BtnResetActivation_Click"/>
+                    <Button x:Name="BtnPiracyCheck"     Style="{StaticResource SideBtn}"
+                            Click="BtnPiracyCheck_Click"/>
 
                     <Separator Background="#d4cdf0" Margin="0,16,0,8"/>
                     <Button x:Name="BtnClear" Style="{StaticResource UtilBtn}"
                             HorizontalContentAlignment="Center"
+
                             Click="BtnClear_Click"/>
                 </StackPanel>
             </Border>

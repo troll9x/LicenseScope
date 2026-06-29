@@ -1,21 +1,23 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- .NET Framework 4.8 is pre-installed on Windows 10 (1903+) and Windows 11.
+         No runtime download needed. Output EXE is ~1 MB instead of ~155 MB. -->
+    <TargetFramework>net4.8-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
-    <PublishTrimmed>false</PublishTrimmed>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>winlic.ico</ApplicationIcon>
+    <AssemblyName>WinLicApp</AssemblyName>
+    <RootNamespace>WinLicApp</RootNamespace>
   </PropertyGroup>
+
+  <!-- System.Management is built into .NET Framework 4.8 — no NuGet needed -->
   <ItemGroup>
-    <PackageReference Include="System.Management" Version="8.0.0" />
+    <Reference Include="System.Management" />
   </ItemGroup>
+
   <ItemGroup>
     <Resource Include="winlic.ico" />
     <Resource Include="winlic_256.png" />

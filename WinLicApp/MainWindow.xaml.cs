@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Management;
+using System.Net.Sockets;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
 using Microsoft.Win32;
+
 
 namespace WinLicApp
 {
@@ -36,8 +39,8 @@ namespace WinLicApp
             return b;
         }
 
-        private static readonly SolidColorBrush BrushOk   = new(Color.FromRgb(0x15, 0x80, 0x3d));
-        private static readonly SolidColorBrush BrushWarn = new(Color.FromRgb(0xb4, 0x53, 0x09));
+        private static readonly SolidColorBrush BrushOk   = new SolidColorBrush(Color.FromRgb(0x15, 0x80, 0x3d));
+        private static readonly SolidColorBrush BrushWarn = new SolidColorBrush(Color.FromRgb(0xb4, 0x53, 0x09));
 
         // ── Known generic placeholder keys ────────────────────────────────────────
         private static readonly Dictionary<string, string> GenericKeys = new()
@@ -92,8 +95,7 @@ namespace WinLicApp
             AdminStatusText.Foreground = _isAdmin ? BrushOk : BrushWarn;
             BtnElevate.Content         = L.Get("BtnElevate");
             BtnAbout.Content           = L.Get("BtnAbout");
-            LblReadOnly.Text           = L.Get("LblReadOnly");
-            LblRequiresAdmin.Text      = L.Get("LblAdmin");
+
             BtnVersionInfo.Content     = L.Get("Btn1");
             BtnSlmgrDli.Content        = L.Get("Btn2");
             BtnInspectKeys.Content     = L.Get("Btn3");
@@ -129,7 +131,7 @@ namespace WinLicApp
         {
             try
             {
-                Process.Start(new ProcessStartInfo(Environment.ProcessPath!)
+                Process.Start(new ProcessStartInfo(Process.GetCurrentProcess().MainModule!.FileName)
                 { Verb = "runas", UseShellExecute = true });
             }
             catch (Exception ex) { LogError(L.Get("ElevateFail") + ex.Message); return; }
@@ -154,7 +156,7 @@ namespace WinLicApp
             LogDocument.Blocks.Add(para);
             LogBox.ScrollToEnd();
             var s = text.TrimStart();
-            StatusBar.Text = s.Length > 90 ? s[..90] + "…" : s;
+            StatusBar.Text = s.Length > 90 ? s.Substring(0, 90) + "…" : s;
         }
 
         private void LogSep()
@@ -247,8 +249,8 @@ namespace WinLicApp
                 var colon = line.IndexOf(':');
                 if (colon > 0 && colon < 40)
                 {
-                    var lbl = line[..colon].Trim();
-                    var val = line[(colon + 1)..].Trim();
+                    var lbl = line.Substring(0, colon).Trim();
+                    var val = line.Substring(colon + 1).Trim();
                     if (lbl == "License Status")
                     {
                         if (val.StartsWith("Licensed") && !val.Contains("Unlicensed"))
@@ -269,7 +271,7 @@ namespace WinLicApp
         {
             var p = key.Split('-');
             return p.Length == 5 ? $"XXXXX-XXXXX-XXXXX-XXXXX-{p[4]}"
-                                 : "XXXXX-XXXXX-XXXXX-XXXXX-" + (key.Length >= 5 ? key[^5..] : key);
+                                 : "XXXXX-XXXXX-XXXXX-XXXXX-" + (key.Length >= 5 ? key.Substring(key.Length - 5) : key);
         }
 
         private string LicenseStatusText(uint s) => s switch
@@ -311,7 +313,7 @@ namespace WinLicApp
         /// </summary>
         private string? IdentifyKeyEdition(string fullKey)
         {
-            var last5 = fullKey.Split('-')[^1];
+            var parts = fullKey.Split('-'); var last5 = parts[parts.Length - 1];
             if (GenericKeys.TryGetValue(last5, out var generic)) return generic;
 
             using var res = WmiQuery(
@@ -578,7 +580,7 @@ namespace WinLicApp
                     LogWarn(L.Get("O3_Mismatch"));
                     LogDiag(L.Get("O3_MismatchReason"));
                     LogDiag(L.Get("O3_ActivePartial") + partialKey);
-                    LogDiag(L.Get("O3_BackupEnds")    + regKey.Split('-')[^1]);
+                    { var rp = regKey.Split('-'); LogDiag(L.Get("O3_BackupEnds") + rp[rp.Length - 1]); }
 
                     if (_isAdmin && AskConfirm(L.Get("O3_ConfirmRemove")))
                     {
@@ -812,8 +814,8 @@ namespace WinLicApp
                     var nm = obj["Name"]?.ToString() ?? "";
                     var dn = obj["DisplayName"]?.ToString() ?? "";
                     if (susServices.Any(s =>
-                            nm.Contains(s, StringComparison.OrdinalIgnoreCase) ||
-                            dn.Contains(s, StringComparison.OrdinalIgnoreCase)))
+                            nm.IndexOf(s, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            dn.IndexOf(s, StringComparison.OrdinalIgnoreCase) >= 0))
                         foundServices.Add($"{nm}  ({dn})");
                 }
             if (foundServices.Count == 0)
@@ -843,7 +845,7 @@ namespace WinLicApp
                 foreach (var line in lines.Split('\n'))
                 {
                     if (susTaskKeywords.Any(k =>
-                            line.Contains(k, StringComparison.OrdinalIgnoreCase)))
+                            line.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0))
                     {
                         var parts = line.Split(',');
                         var taskName = parts.Length > 0
@@ -914,7 +916,7 @@ namespace WinLicApp
                     try
                     {
                         if (susProcNames.Any(n =>
-                                proc.ProcessName.Contains(n, StringComparison.OrdinalIgnoreCase)))
+                                proc.ProcessName.IndexOf(n, StringComparison.OrdinalIgnoreCase) >= 0))
                             foundProcs.Add($"{proc.ProcessName}  (PID {proc.Id})");
                     }
                     catch { }
