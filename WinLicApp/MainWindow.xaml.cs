@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management;
+using System.Net;
 using System.Net.Sockets;
 using System.Security.Principal;
 using System.Text;
@@ -823,18 +824,70 @@ namespace WinLicApp
             else
             {
                 LogData(L.Get("P7_KmsName"), kmsHost);
+
+                // 1a. Local loopback — local KMS emulator (KMSpico, vlmcsd…)
                 bool isLocal = kmsHost.Equals("localhost", StringComparison.OrdinalIgnoreCase)
                             || kmsHost.StartsWith("127.") || kmsHost.StartsWith("::1")
                             || kmsHost == "0.0.0.0";
+
+                // 1b. Microsoft-operated Azure KMS (only valid inside Azure VMs)
+                bool isMsOfficial = kmsHost.EndsWith(".microsoft.com", StringComparison.OrdinalIgnoreCase)
+                                 || kmsHost.EndsWith(".windows.net",   StringComparison.OrdinalIgnoreCase);
+
+                // 1c. Private / corporate network (RFC 1918 IPs or internal hostnames)
+                bool isPrivateIp   = Regex.IsMatch(kmsHost,
+                    @"^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\.");
+                bool isPrivateHost = !isPrivateIp
+                                  && !IPAddress.TryParse(kmsHost, out _)
+                                  && (kmsHost.EndsWith(".local",    StringComparison.OrdinalIgnoreCase)
+                                   || kmsHost.EndsWith(".internal", StringComparison.OrdinalIgnoreCase)
+                                   || kmsHost.EndsWith(".corp",     StringComparison.OrdinalIgnoreCase)
+                                   || kmsHost.EndsWith(".lan",      StringComparison.OrdinalIgnoreCase)
+                                   || kmsHost.EndsWith(".intranet", StringComparison.OrdinalIgnoreCase)
+                                   || !kmsHost.Contains('.'));
+
+                // 1d. Known piracy cloud KMS providers
+                string[] knownPiracyDomains =
+                {
+                    "msguides",         // km8.msguides.com, kms2.msguides.com…
+                    "kms.loli",         // kms.loli.beer
+                    "digiboy.ir",
+                    "0t.ng",
+                    "kms.chinancce",
+                    "kmscloud",
+                };
+                bool isKnownPiracy = knownPiracyDomains
+                    .Any(d => kmsHost.IndexOf(d, StringComparison.OrdinalIgnoreCase) >= 0);
+
                 if (isLocal)
                 {
                     LogError(L.Get("P7_KmsLocal"));
                     criticalKms = true;
                     suspiciousCount++;
                 }
+                else if (isKnownPiracy)
+                {
+                    LogError(L.Get("P7_KmsKnownPiracy"));
+                    LogError($"  Domain: {kmsHost}");
+                    criticalKms = true;
+                    suspiciousCount++;
+                }
+                else if (isMsOfficial)
+                {
+                    LogOk(L.Get("P7_KmsMsOfficial"));
+                    LogInfo(L.Get("P7_KmsMsOfficialNote"));
+                }
+                else if (isPrivateIp || isPrivateHost)
+                {
+                    LogInfo(L.Get("P7_KmsCorporate"));
+                }
                 else
                 {
-                    LogInfo(L.Get("P7_KmsExternal"));
+                    // Public internet, unknown domain — cloud piracy KMS
+                    LogError(L.Get("P7_KmsCloudPiracy"));
+                    LogError($"  Server: {kmsHost}");
+                    criticalKms = true;
+                    suspiciousCount++;
                 }
             }
 

@@ -1,4 +1,4 @@
-﻿# =============================================================================
+# =============================================================================
 # WinLicManager.ps1  --  Windows Licensing & Information Manager  v1.0 (beta1)
 # =============================================================================
 # Mirrors the WinLic Manager GUI application for power-user / CLI usage.
@@ -688,7 +688,7 @@ function Invoke-ActivationAudit {
 
     # Preamble ----------------------------------------------------------------
     Write-Host "  WHAT THIS SCAN CHECKS" -ForegroundColor White
-    Write-Info "(1) KMS server name / registry  ->  detects local KMS emulators (KMSpico, KMSAuto, vlmcsd...)"
+    Write-Info "(1) KMS server name / registry  ->  detects LOCAL emulators (KMSpico, vlmcsd) AND CLOUD piracy KMS services"
     Write-Info "(2) Localhost port probe         ->  confirms a live local KMS listener is running"
     Write-Info "(3) System services              ->  residual activation services that survive reboots"
     Write-Info "(4) Scheduled tasks              ->  periodic re-activation tasks (AutoKMS, KMSAuto...)"
@@ -708,8 +708,10 @@ function Invoke-ActivationAudit {
 
     # (1) KMS server name -----------------------------------------------------
     Write-Step "(1) Checking KMS server name (registry + WMI)..."
-    Write-Info "KMS emulators set the KMS server to 127.x.x.x / localhost to trick Windows"
-    Write-Info "into believing it contacted a real corporate KMS server."
+    Write-Info "KMS piracy operates in two forms:"
+    Write-Info "  LOCAL EMULATOR  -- fake KMS server on 127.x.x.x (KMSpico, vlmcsd, KMSAuto)"
+    Write-Info "  CLOUD SERVICE   -- third-party internet KMS host (e.g. km8.msguides.com)"
+    Write-Info "Microsoft does NOT provide public KMS servers. Any cloud KMS is a piracy service."
     Write-Cmd  "Get-CimInstance SoftwareLicensingProduct | Select KeyManagementServiceMachine"
     Write-Blank
 
@@ -727,12 +729,46 @@ function Invoke-ActivationAudit {
 
     if ($kmsHost) {
         Write-Data "KMS server configured:" $kmsHost
-        if ($kmsHost -match '^(127\.|localhost|::1)') {
-            Write-Fail "LOCAL KMS EMULATOR -- KMS server is pointing to localhost/127.x.x.x!"
+
+        # -- Classify the configured KMS host --
+        $isLocal       = $kmsHost -match '^(127\.|localhost|::1|0\.0\.0\.0)'
+        $isMsOfficial  = $kmsHost -match '\.(microsoft\.com|windows\.net)$'
+        $isPrivateIp   = $kmsHost -match '^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)'
+        $isPrivateHost = (-not $isPrivateIp) -and (
+                             $kmsHost -match '\.(local|internal|corp|lan|intranet|home)$' -or
+                             $kmsHost -notmatch '\.'
+                         )
+        # Known piracy cloud KMS providers (lowercase match)
+        $knownPiracyDomains = @('msguides','kms.loli','digiboy.ir','0t.ng','kms.chinancce','kmscloud')
+        $isKnownPiracy = $knownPiracyDomains | Where-Object { $kmsHost -match [regex]::Escape($_) }
+
+        if ($isLocal) {
+            Write-Fail "LOCAL KMS EMULATOR -- KMS server points to localhost/127.x.x.x!"
+            Write-Fail "A fake KMS server (KMSpico, vlmcsd, KMSAuto) is running locally."
             $criticalKms = $true
             $suspiciousCount++
+        } elseif ($isKnownPiracy) {
+            Write-Fail "KNOWN PIRACY KMS DOMAIN DETECTED!"
+            Write-Fail "  Server : $kmsHost"
+            Write-Fail "  This domain is a recognized third-party activation service."
+            Write-Fail "  It is NOT operated by Microsoft."
+            $criticalKms = $true
+            $suspiciousCount++
+        } elseif ($isMsOfficial) {
+            Write-OK  "Microsoft Azure KMS endpoint -- legitimate Microsoft-operated server."
+            Write-Warn "Note: Azure KMS is only valid inside Microsoft Azure virtual machines."
+            Write-Warn "If this is NOT an Azure VM, this configuration is unusual."
+        } elseif ($isPrivateIp -or $isPrivateHost) {
+            Write-OK  "KMS server is on a private/internal network address."
+            Write-Info "Consistent with a legitimate corporate deployment."
         } else {
-            Write-OK "KMS server is an external address -- consistent with legitimate corporate deployment."
+            Write-Fail "CLOUD KMS PIRACY SERVICE DETECTED!"
+            Write-Fail "  Server : $kmsHost"
+            Write-Fail "  This is a public internet KMS host -- NOT a Microsoft service."
+            Write-Warn "  Microsoft does NOT provide public KMS servers."
+            Write-Warn "  This is almost certainly an unauthorized third-party activation service."
+            $criticalKms = $true
+            $suspiciousCount++
         }
     } else {
         Write-OK "No KMS server configured."
