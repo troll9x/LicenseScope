@@ -37,7 +37,7 @@ Set-StrictMode -Off
 $ErrorActionPreference = 'SilentlyContinue'
 
 # ---- Globals ----------------------------------------------------------------
-$SCRIPT_VERSION = "v1.0 (beta1)"
+$SCRIPT_VERSION = "v1.0 (beta2)"
 $SCRIPT_DIR     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SETTINGS_FILE  = Join-Path $SCRIPT_DIR "settings.ini"
 $slmgrPath      = Join-Path $env:SystemRoot "System32\slmgr.vbs"

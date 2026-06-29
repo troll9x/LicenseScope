@@ -4,9 +4,9 @@
 
 ![WinLic Manager](WinLicApp/winlic_256.png)
 
-**Công cụ quản lý bản quyền Windows với giao diện đồ họa**
+**Công cụ quản lý bản quyền Windows — GUI & PowerShell CLI**
 
-[![Version](https://img.shields.io/badge/phiên%20bản-1.0%20beta1-a78bfa?style=flat-square)](https://github.com/ardennguyen/WinLic/releases)
+[![Version](https://img.shields.io/badge/phiên%20bản-1.0%20beta2-a78bfa?style=flat-square)](https://github.com/ardennguyen/WinLic/releases)
 [![Platform](https://img.shields.io/badge/nền%20tảng-Windows%2010%2F11-7c3aed?style=flat-square)](https://github.com/ardennguyen/WinLic)
 [![Framework](https://img.shields.io/badge/.NET%20Framework-4.8-6d28d9?style=flat-square)](https://dotnet.microsoft.com/en-us/download/dotnet-framework/net48)
 [![License](https://img.shields.io/badge/giấy%20phép-MIT-6d28d9?style=flat-square)](LICENSE)
@@ -15,115 +15,175 @@
 
 ---
 
+**Điều hướng / Navigate:**
+[Giới thiệu](#giới-thiệu) ·
+[Tải về](#tải-về) ·
+[Tính năng](#tính-năng) ·
+[GUI App](#gui-app) ·
+[PowerShell CLI](#powershell-cli) ·
+[Xây dựng từ mã nguồn](#xây-dựng-từ-mã-nguồn) ·
+[Cấu trúc dự án](#cấu-trúc-dự-án) ·
+[Tác giả](#tác-giả)
+
+---
+
 ## Giới thiệu
 
-**WinLic Manager** là ứng dụng Windows giúp bạn xem, kiểm tra và quản lý bản quyền Windows thông qua giao diện đồ họa thân thiện — thay thế cho việc dùng PowerShell hay command line thủ công.
+**WinLic Manager** gồm hai công cụ song song — **ứng dụng GUI (.NET WPF)** và **script PowerShell CLI** — giúp bạn xem, kiểm tra và quản lý bản quyền Windows mà không cần gõ lệnh thủ công.
 
-Ứng dụng hỗ trợ đầy đủ **tiếng Anh** và **tiếng Việt**, hoạt động ổn định trên **Windows 10** và **Windows 11**. Sử dụng WMI, Registry và `slmgr.vbs` — **không cần cài đặt thêm bất cứ thứ gì**; .NET Framework 4.8 đã được tích hợp sẵn trong Windows 10/11.
-
----
-
-## Tính năng
-
-| # | Tính năng | Mô tả |
-|---|-----------|-------|
-| 1 | **Phiên bản OS & Key OEM BIOS** | Đọc thông tin hệ điều hành, kiểm tra Key Bản Quyền nhúng trong BIOS/UEFI và xác định ấn bản Windows tương ứng |
-| 2 | **Kênh & Loại Bản Quyền** | Chạy `slmgr /dli` để xem tên, kênh phân phối và trạng thái kích hoạt |
-| 3 | **Key & Trạng thái Kích Hoạt** | Hiển thị Key một phần đang hoạt động, Key dự phòng từ Registry, Key OEM BIOS; phát hiện phương thức kích hoạt (Digital Entitlement / KMS / Retail); báo cáo mở rộng `slmgr /dlv` tuỳ chọn |
-| 4 | **Kiểm thử & Cài Key Bản Quyền** | Xác thực định dạng Key, cài đặt qua `slmgr /ipk` với phân tích lỗi chi tiết |
-| 5 | **Gỡ Key Bản Quyền** | Gỡ và xoá Key hiện tại bằng `slmgr /upk` + `/cpky` |
-| 6 | **Đặt Lại Kích Hoạt (Rearm)** | Đặt lại đếm ngược kích hoạt với `slmgr /rearm` |
-| 7 | **Kiểm Tra Kích Hoạt Bên Thứ Ba** | Phát hiện KMS giả lập cục bộ, kiểm tra cổng TCP, dịch vụ, tác vụ định kỳ, tập tin và tiến trình đáng ngờ; cấu hình danh sách quét tùy chỉnh qua settings dialog |
+Cả hai công cụ đều hỗ trợ đầy đủ **7 tùy chọn** giống nhau, hoạt động trên **Windows 10/11**, sử dụng WMI, Registry và `slmgr.vbs` — **không cần cài thêm bất cứ thứ gì**.
 
 ---
 
-## Phát hiện Digital Entitlement
+## Tải về
 
-WinLic Manager sử dụng thuật toán **kiểm tra kênh bản quyền trước** để phân biệt chính xác:
-
-- **Digital Entitlement (DE)** — Bản quyền gắn phần cứng qua máy chủ Microsoft
-- **KMS** — Bản quyền doanh nghiệp/tập thể
-- **Retail / OEM** — Kích hoạt tiêu chuẩn bằng Key thật
-
-> **Lưu ý:** Trên hệ thống DE, Key dự phòng và Key OEM BIOS có thể khác Key đang dùng — điều này hoàn toàn bình thường vì Microsoft gán một Key duy nhất từ cloud cho phần cứng của bạn.
-
----
-
-## Kiểm tra kích hoạt bên thứ ba (Tùy chọn 7)
-
-Ứng dụng quét **6 lớp dấu hiệu** để phát hiện KMS giả lập và công cụ kích hoạt lậu:
-
-1. **Tên máy chủ KMS** — Registry + WMI: nếu trỏ `127.x.x.x` / `localhost` → KMS giả lập cục bộ
-2. **Cổng KMS trên localhost** — Kết nối TCP thử nghiệm: cổng mở = KMS đang lắng nghe
-3. **Dịch vụ hệ thống** — Tìm tên dịch vụ khớp với KMSpico, KMService, KMSELDI, vlmcsd…
-4. **Tác vụ định kỳ** — Tìm task như AutoKMS, KMSAuto, KMS_VL_ALL…
-5. **Đường dẫn tập tin** — Kiểm tra `%ProgramFiles%\KMSpico`, `KMSELDI.exe`, `\Windows\KMS\`…
-6. **Tiến trình đang chạy** — Khớp tên với công cụ kích hoạt đã biết
-
-Danh sách quét có thể **tùy chỉnh** qua nút **⚙ Cài đặt Kiểm tra** — bổ sung cổng, tên dịch vụ, tiến trình, và đường dẫn riêng. Cài đặt tùy chỉnh được lưu vào `settings.ini` cạnh file EXE.
-
-### Giới hạn đã biết
-
-| Loại công cụ | Phát hiện được không? | Lý do |
-|---|---|---|
-| KMSpico / KMSAuto (đang chạy) | ✅ Có | Để lại dịch vụ, tác vụ, tập tin |
-| vlmcsd / KMS_VL_ALL (đang chạy) | ✅ Có | Để lại dịch vụ, cổng KMS mở |
-| **MAS HWID / HWIDGEN** | ❌ Không | Tạo DE thật qua API Microsoft — không thể phân biệt |
-| Công cụ đã gỡ sạch | ❌ Không | Không còn dấu vết sau khi gỡ cài đặt |
-| Windows Loader (SLIC cũ) | ❌ Không | Sửa đổi firmware, cần phân tích BIOS |
-| KMS38 (đã dọn) | ⚠️ Một phần | Chỉ phát hiện nếu máy chủ KMS vẫn trỏ localhost |
-
----
-
-## Yêu cầu hệ thống
-
-| | |
-|---|---|
-| **Hệ điều hành** | Windows 10 (1903+) hoặc Windows 11 (x64) |
-| **Quyền** | Administrator — ứng dụng tự yêu cầu UAC khi khởi động |
-| **.NET Framework** | 4.8 — **đã tích hợp sẵn** trong Windows 10/11; không cần cài thêm |
-| **Phụ thuộc khác** | Không có — chỉ cần file EXE là đủ |
-
----
-
-## Tải về & Sử dụng
-
-### Tải về
-
-Tải từ [**Releases**](https://github.com/ardennguyen/WinLic/releases):
+Tải phiên bản mới nhất từ trang [**Releases**](https://github.com/ardennguyen/WinLic/releases):
 
 | File | Mô tả |
 |---|---|
-| `WinLicApp-v1.0-beta1.zip` | **File chính** — giải nén và chạy, không cần cài đặt |
-| `WinLicApp-v1.0-beta1.zip.sha256` | Kiểm tra toàn vẹn của file ZIP |
-| `WinLicApp-v1.0-beta1.exe.sha256` | Kiểm tra toàn vẹn của file EXE bên trong ZIP |
+| `WinLicApp-<version>.zip` | **GUI App** — giải nén và chạy, không cần cài đặt |
+| `WinLicApp-<version>.zip.sha256` | Kiểm tra toàn vẹn của file ZIP |
+| `WinLicApp-<version>.exe.sha256` | Kiểm tra toàn vẹn của file EXE bên trong ZIP |
+| `WinLicPS-<version>.zip` | **PowerShell CLI** — script + settings.ini |
+| `WinLicPS-<version>.zip.sha256` | Kiểm tra toàn vẹn của bộ cài CLI |
 
 ### Kiểm tra toàn vẹn (tùy chọn)
 
 ```powershell
 # PowerShell
-Get-FileHash .\WinLicApp-v1.0-beta1.zip -Algorithm SHA256
-# So sánh với nội dung WinLicApp-v1.0-beta1.zip.sha256
+Get-FileHash .\WinLicApp-<version>.zip -Algorithm SHA256
+# So sánh với nội dung file .sha256 tương ứng
 ```
 ```bash
 # Linux / macOS
-sha256sum -c WinLicApp-v1.0-beta1.zip.sha256
+sha256sum -c WinLicApp-<version>.zip.sha256
 ```
 ```cmd
 :: CMD / certutil
-certutil -hashfile WinLicApp-v1.0-beta1.zip SHA256
+certutil -hashfile WinLicApp-<version>.zip SHA256
 ```
 
-### Chạy ứng dụng
+---
 
-1. Giải nén zip, **nhấp đúp** vào `WinLicApp-v1.0-beta1.exe`
-2. Ứng dụng sẽ **tự yêu cầu quyền Administrator** qua UAC — hãy chấp nhận
+## Tính năng
+
+Cả hai công cụ (GUI và CLI) đều cung cấp 7 tùy chọn giống nhau:
+
+| # | Tính năng | Quyền |
+|---|-----------|-------|
+| 1 | **Phiên bản OS & Key OEM BIOS** — đọc thông tin hệ điều hành, key nhúng trong BIOS/UEFI | Không cần Admin |
+| 2 | **Kênh & Loại Bản Quyền** — chạy `slmgr /dli`, xem kênh phân phối và trạng thái | Không cần Admin |
+| 3 | **Key & Trạng thái Kích Hoạt** — WMI + Registry + `slmgr /dlv` tùy chọn; phát hiện Digital Entitlement / KMS / Retail | Không cần Admin |
+| 4 | **Kiểm thử & Cài Key** — xác thực và cài key mới qua `slmgr /ipk`, phân tích lỗi chi tiết | **Admin** |
+| 5 | **Gỡ Key Bản Quyền** — xóa key hiện tại bằng `slmgr /upk` + `/cpky` | **Admin** |
+| 6 | **Đặt Lại Kích Hoạt (Rearm)** — reset đếm ngược kích hoạt với `slmgr /rearm` | **Admin** |
+| 7 | **Kiểm Tra Kích Hoạt Bên Thứ Ba** — quét 6 lớp dấu hiệu KMS giả lập; danh sách quét tùy chỉnh qua `settings.ini` | Không cần Admin |
+
+> ⚠️ Tùy chọn **4, 5, 6** thay đổi trạng thái bản quyền thật sự của Windows. Ứng dụng sẽ yêu cầu xác nhận trước khi thực hiện. Chỉ dùng khi bạn biết chính xác mình đang làm gì.
+
+### Phát hiện kích hoạt bên thứ ba (Tùy chọn 7)
+
+Quét **6 lớp dấu hiệu** để phát hiện KMS giả lập và công cụ kích hoạt lậu:
+
+| Lớp | Kiểm tra | Phát hiện |
+|-----|----------|-----------|
+| 1 | Tên máy chủ KMS (Registry + WMI) | Trỏ `127.x.x.x` → KMS giả lập cục bộ |
+| 2 | Cổng KMS trên localhost (TCP probe) | Cổng mở = KMS đang lắng nghe |
+| 3 | Dịch vụ hệ thống | KMSpico, KMSELDI, vlmcsd... |
+| 4 | Tác vụ định kỳ | AutoKMS, KMSAuto, KMS_VL_ALL... |
+| 5 | Đường dẫn tập tin | `%ProgramFiles%\KMSpico`, `KMSELDI.exe`... |
+| 6 | Tiến trình đang chạy | KMSguard, AAct, vlmcsd... |
+
+| Loại công cụ | Phát hiện | Lý do |
+|---|---|---|
+| KMSpico / KMSAuto (đang chạy) | ✅ | Để lại dịch vụ, tác vụ, tập tin |
+| vlmcsd / KMS_VL_ALL (đang chạy) | ✅ | Để lại dịch vụ, cổng KMS mở |
+| **MAS HWID / HWIDGEN** | ❌ | Tạo Digital Entitlement thật qua API Microsoft |
+| Công cụ đã gỡ sạch | ❌ | Không còn dấu vết |
+| Windows Loader (SLIC cũ) | ❌ | Sửa đổi firmware BIOS |
+| KMS38 (đã dọn) | ⚠️ | Chỉ phát hiện nếu máy chủ KMS vẫn trỏ localhost |
+
+---
+
+## Yêu cầu hệ thống
+
+| | GUI App | PowerShell CLI |
+|---|---|---|
+| **OS** | Windows 10 (1903+) / Windows 11 x64 | Windows 10 / 11 |
+| **.NET** | Framework 4.8 (tích hợp sẵn) | Không cần |
+| **Quyền khởi động** | Không cần Admin | Không cần Admin |
+| **Quyền tùy chọn 4/5/6** | Tự nhắc UAC khi cần | Tự nhắc relaunch khi cần |
+| **Phụ thuộc khác** | Không có | PowerShell 5.1+ (có sẵn trên Win 10/11) |
+
+---
+
+## GUI App
+
+### Tải về & Chạy
+
+1. Tải `WinLicApp-<version>.zip` từ [**Releases**](https://github.com/ardennguyen/WinLic/releases)
+2. Giải nén, **nhấp đúp** vào `WinLicApp-<version>.exe`
 3. Chọn ngôn ngữ **EN** hoặc **VI** ở góc trên bên phải
 4. Nhấn vào các tùy chọn ở thanh bên trái để bắt đầu
 
-### Lưu ý quan trọng
+> Tùy chọn 1, 2, 3, 7 hoạt động ngay không cần Admin. Khi chọn 4/5/6, ứng dụng sẽ tự nhắc nâng quyền qua UAC.
 
-> ⚠️ Các tùy chọn **4, 5, 6** (Cài Key / Gỡ Key / Rearm) thay đổi trạng thái bản quyền thật sự của Windows. Chỉ dùng khi bạn biết chính xác mình đang làm gì.
+### Cài đặt quét tùy chỉnh (Tùy chọn 7)
+
+Nhấn nút **⚙ Cài đặt Kiểm tra** ngay dưới Tùy chọn 7 để mở hộp thoại cấu hình danh sách quét. Cài đặt tự động lưu vào `settings.ini` cạnh file EXE.
+
+---
+
+## PowerShell CLI
+
+Dành cho power user muốn dùng công cụ qua command line.
+
+### Tải về & Chạy
+
+1. Tải `WinLicPS-<version>.zip` từ [**Releases**](https://github.com/ardennguyen/WinLic/releases)
+2. Giải nén vào một thư mục bất kỳ (giữ nguyên cấu trúc — `WinLicManager.ps1` và `settings.ini` cùng thư mục)
+3. Chạy script:
+
+```powershell
+# Chạy trực tiếp (không cần Admin — tự nhắc khi chọn 4/5/6)
+powershell -ExecutionPolicy Bypass -File .\WinLicManager.ps1
+
+# Chạy với quyền Admin ngay từ đầu
+Start-Process powershell -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File .\WinLicManager.ps1"
+```
+
+### Menu
+
+```
+  1 -- OS Version & OEM BIOS Key
+  2 -- License Channel & Type  (slmgr /dli)
+  3 -- Inspect Keys & Activation Status
+  4 -- Test & Install Product Key         [!]   ← danger
+  5 -- Uninstall License Key              [!]   ← danger
+  6 -- Reset Activation (Rearm)           [!]   ← danger
+  7 -- 3rd Party Activation Audit
+  Q -- Quit
+```
+
+### Tùy chỉnh quét Tùy chọn 7 (settings.ini)
+
+File `settings.ini` được đính kèm trong bộ cài CLI. Mở và bỏ chú thích các dòng cần thiết:
+
+```powershell
+notepad .\settings.ini
+```
+
+File `settings.ini` phải nằm **cùng thư mục** với `WinLicManager.ps1`. Khi vào Tùy chọn 7, script sẽ hiển thị cấu hình hiện tại và hỏi có muốn chỉnh sửa trước khi quét không.
+
+Các mục có thể tùy chỉnh:
+
+| Mục | Mô tả |
+|---|---|
+| `[ExtraPorts]` | Cổng TCP bổ sung để thử kết nối localhost |
+| `[ExtraServices]` | Từ khóa tên dịch vụ bổ sung |
+| `[ExtraTaskKeywords]` | Từ khóa tên tác vụ định kỳ bổ sung |
+| `[ExtraProcesses]` | Từ khóa tên tiến trình bổ sung |
+| `[ExtraFilePaths]` | Đường dẫn tập tin/thư mục bổ sung cần kiểm tra |
 
 ---
 
@@ -134,7 +194,7 @@ certutil -hashfile WinLicApp-v1.0-beta1.zip SHA256
 - [.NET SDK](https://dotnet.microsoft.com/download) (bất kỳ phiên bản nào hỗ trợ .NET Framework 4.8 target)
 - Windows 10/11
 
-### Biên dịch
+### Biên dịch GUI App
 
 ```bash
 git clone https://github.com/ardennguyen/WinLic.git
@@ -144,64 +204,36 @@ dotnet build WinLicApp/WinLicApp.csproj -c Release
 
 EXE xuất ra tại: `WinLicApp/bin/Release/net4.8-windows/WinLicApp.exe`
 
-### Cấu trúc dự án
+### PowerShell CLI
+
+Không cần biên dịch — chạy trực tiếp từ source:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\WinLicPS\WinLicManager.ps1
+```
+
+---
+
+## Cấu trúc dự án
 
 ```
 WinLic/
 ├── WinLicApp/                       # Ứng dụng GUI (.NET Framework 4.8 WPF)
-│   ├── MainWindow.xaml              # Giao diện chính
-│   ├── MainWindow.xaml.cs           # Logic chính, 7 tùy chọn
+│   ├── MainWindow.xaml[.cs]         # Giao diện & logic chính, 7 tùy chọn
 │   ├── Localization.cs              # Bảng chuỗi EN/VIE
-│   ├── AppSettings.cs               # Quản lý settings.ini (Option 7)
+│   ├── AppSettings.cs               # Quản lý settings.ini (Tùy chọn 7)
 │   ├── SettingsDialog.xaml[.cs]     # Hộp thoại Cài đặt Kiểm tra
 │   ├── AboutDialog.xaml[.cs]        # Hộp thoại Giới thiệu
 │   ├── InputDialog.xaml[.cs]        # Hộp thoại nhập Key
 │   ├── App.xaml[.cs]                # Điểm khởi động ứng dụng
 │   ├── app.manifest                 # UAC + DPI manifest
-│   ├── winlic.ico                   # Icon ứng dụng
-│   ├── winlic_256.png               # Icon 256px
+│   ├── winlic.ico / winlic_256.png  # Icon ứng dụng
 │   └── WinLicApp.csproj             # Định nghĩa dự án .NET Framework 4.8 WPF
 ├── WinLicPS/                        # Công cụ PowerShell (CLI)
-│   ├── WinLicManager.ps1            # Script chính -- gương 7 tùy chọn của GUI
-│   └── settings.ini        # Mẫu cấu hình cho tùy chọn 7 (có hướng dẫn)
+│   ├── WinLicManager.ps1            # Script chính — gương 7 tùy chọn của GUI
+│   └── settings.ini                 # Cấu hình quét Tùy chọn 7 (có hướng dẫn)
 └── README.md
 ```
-
----
-
-## Sử dụng PowerShell CLI
-
-Dành cho power user muốn dùng công cụ qua command line thay vì giao diện đồ họa.
-
-### Chạy script
-
-```powershell
-# Chạy trực tiếp (không cần admin -- tự nhắc khi cần)
-powershell -ExecutionPolicy Bypass -File .\WinLicPS\WinLicManager.ps1
-
-# Chạy với quyền Admin ngay từ đầu
-Start-Process powershell -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -File .\WinLicPS\WinLicManager.ps1"
-```
-
-### Tùy chỉnh quét Option 7 (settings.ini)
-
-```powershell
-# Sao chép mẫu và chỉnh sửa
-Copy-Item .\WinLicPS\settings.ini .\WinLicPS\settings.ini
-notepad .\WinLicPS\settings.ini
-```
-
-File `settings.ini` phải nằm cùng thư mục với `WinLicManager.ps1`. Mẫu cấu hình có hướng dẫn chi tiết cho từng mục.
-
----
-
-## Mã nguồn phiên bản hiện tại
-
-| | |
-|---|---|
-| **Branch** | [`release/v1.0-beta1`](https://github.com/ardennguyen/WinLic/tree/release/v1.0-beta1) |
-| **Commit** | [`b4738b0`](https://github.com/ardennguyen/WinLic/commit/b4738b0) |
-| **Development** | [`main`](https://github.com/ardennguyen/WinLic/tree/main) |
 
 ---
 
@@ -220,5 +252,5 @@ Dự án này được phân phối theo giấy phép **MIT**. Xem file [LICENSE
 ---
 
 <div align="center">
-  <sub>WinLic Manager v1.0 (beta1) — Made with ❤️ by Arden Nguyen Duc Huy</sub>
+  <sub>WinLic Manager — Made with ❤️ by Arden Nguyen Duc Huy</sub>
 </div>
