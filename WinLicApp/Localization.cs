@@ -16,8 +16,8 @@ namespace WinLicApp
                                     "Trình Quản Lý Bản Quyền Windows"),
             ["AdminOk"]          = ("✔  Running as Administrator — all features available",
                                     "✔  Đang chạy với quyền Quản trị viên — đầy đủ tính năng"),
-            ["AdminWarn"]        = ("⚠  Requesting Administrator privileges…",
-                                    "⚠  Đang yêu cầu quyền Quản trị viên…"),
+            ["AdminWarn"]        = ("⚠  Not running as Administrator — options 4, 5, 6 require elevation",
+                                    "⚠  Chưa có quyền Quản trị viên — tùy chọn 4, 5, 6 cần nâng quyền"),
             ["BtnElevate"]       = ("⚡ Relaunch as Admin",    "⚡ Khởi Lại Với Quyền Admin"),
             ["BtnAbout"]         = ("About",                   "Giới Thiệu"),
 
@@ -69,6 +69,8 @@ namespace WinLicApp
                                     "Vui lòng dùng nút '⚡ Khởi Lại Với Quyền Admin' ở đầu trang."),
             ["AdminReqTitle"]    = ("Admin Required", "Cần Quyền Admin"),
             ["ElevateFail"]      = ("Elevation failed: ", "Không thể nâng cấp quyền: "),
+            ["ElevateFromOption"] = ("This option requires Administrator privileges.\n\nRelaunch WinLic Manager as Administrator now?\n\nNote: The app will restart and the current log will be cleared.",
+                                    "Tùy chọn này yêu cầu quyền Quản trị viên.\n\nKhởi lại WinLic Manager với quyền Admin ngay bây giờ?\n\nLưu ý: Ứng dụng sẽ khởi động lại và nhật ký hiện tại sẽ bị xóa."),
 
             // ── Dialog titles (shared) ────────────────────────────────────────────
             ["Confirm_Title"]    = ("Confirm",      "Xác nhận"),
@@ -81,8 +83,8 @@ namespace WinLicApp
             ["LogCleared"]       = ("Log cleared.", "Đã xóa nhật ký."),
             ["Startup_Ready"]    = ("WinLic Manager v1.0 (beta1) — ready.",
                                     "WinLic Manager v1.0 (beta1) — sẵn sàng."),
-            ["Startup_NoAdmin"]  = ("Running without admin. Options 4, 5, 6 are blocked.",
-                                    "Đang chạy không có quyền Admin. Tùy chọn 4, 5, 6 bị chặn."),
+            ["Startup_NoAdmin"]  = ("Running without Administrator. Options 1, 2, 3, 7 are fully available. Options 4, 5, 6 will prompt for elevation when selected.",
+                                    "Không có quyền Quản trị. Tùy chọn 1, 2, 3, 7 hoạt động bình thường. Tùy chọn 4, 5, 6 sẽ yêu cầu nâng quyền khi được chọn."),
 
             // ── InputDialog buttons ───────────────────────────────────────────────
             ["Dialog_OK"]        = ("OK",       "Xác nhận"),

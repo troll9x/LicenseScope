@@ -73,17 +73,15 @@ namespace WinLicApp
             {
                 AdminStatusText.Text       = L.Get("AdminOk");
                 AdminStatusText.Foreground = BrushOk;
+                LogInfo(L.Get("Startup_Ready"));
             }
             else
             {
                 AdminStatusText.Text       = L.Get("AdminWarn");
                 AdminStatusText.Foreground = BrushWarn;
                 BtnElevate.Visibility      = Visibility.Visible;
-                Elevate();   // auto-elevate — no confirmation prompt
-                return;
+                LogWarn(L.Get("Startup_NoAdmin"));
             }
-
-            LogInfo(L.Get("Startup_Ready"));
         }
 
         // =========================================================================
@@ -308,9 +306,16 @@ namespace WinLicApp
         private bool RequireAdmin()
         {
             if (_isAdmin) return true;
-            LogError(L.Get("AdminReqMsg"));
-            MessageBox.Show(L.Get("AdminReqMsg"), L.Get("AdminReqTitle"),
-                            MessageBoxButton.OK, MessageBoxImage.Error);
+
+            // Offer to relaunch as admin — Elevate() closes this instance
+            if (MessageBox.Show(
+                    L.Get("ElevateFromOption"),
+                    L.Get("ElevateTitle"),
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                Elevate();
+            }
             return false;
         }
 
