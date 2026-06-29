@@ -18,13 +18,13 @@ namespace WinLicApp
                                     "✔  Đang chạy với quyền Quản trị viên — đầy đủ tính năng"),
             ["AdminWarn"]        = ("⚠  Not running as Administrator — options 4, 5, 6 require elevation",
                                     "⚠  Chưa có quyền Quản trị viên — tùy chọn 4, 5, 6 cần nâng quyền"),
-            ["BtnElevate"]       = ("⚡ Relaunch as Admin",    "⚡ Khởi Lại Với Quyền Admin"),
+            ["BtnElevate"]       = ("⚡ Relaunch as Admin",    "⚡ Khởi Chạy Lại Với Quyền Admin"),
             ["BtnAbout"]         = ("About",                   "Giới Thiệu"),
 
             // ── About dialog ─────────────────────────────────────────────────────
             ["About_Title"]       = ("About — WinLic Manager",
                                     "Giới thiệu — WinLic Manager"),
-            ["About_Version"]     = ("Version 1.0 (beta1)",         "Phiên bản 1.0 (beta1)"),
+            ["About_Version"]     = ("Version 1.0 (beta2)",         "Phiên bản 1.0 (beta2)"),
             ["About_Author"]      = ("Author",                      "Tác giả"),
             ["About_GitHub"]      = ("GitHub",                      "GitHub"),
             ["About_Repo"]        = ("Repository",                  "Kho mã nguồn"),
@@ -63,14 +63,14 @@ namespace WinLicApp
 
             // ── Elevation / admin ─────────────────────────────────────────────────
             ["ElevateQ"]         = ("This tool works best with Administrator privileges.\n\nRelaunch as Administrator now?\n\nChoose No to continue in read-only mode.",
-                                    "Công cụ này cần quyền Quản trị viên để hoạt động đầy đủ.\n\nKhởi lại với quyền Quản trị viên ngay bây giờ?\n\nChọn Không để tiếp tục ở chế độ chỉ đọc."),
+                                    "Công cụ này cần quyền Quản trị viên để hoạt động đầy đủ.\n\nKhởi chạy lại với quyền Quản trị viên ngay bây giờ?\n\nChọn Không để tiếp tục ở chế độ chỉ đọc."),
             ["ElevateTitle"]     = ("Elevation Required", "Yêu Cầu Quyền Admin"),
             ["AdminReqMsg"]      = ("Please use the '⚡ Relaunch as Admin' button in the header.",
-                                    "Vui lòng dùng nút '⚡ Khởi Lại Với Quyền Admin' ở đầu trang."),
+                                    "Vui lòng dùng nút '⚡ Khởi Chạy Lại Với Quyền Admin' ở đầu trang."),
             ["AdminReqTitle"]    = ("Admin Required", "Cần Quyền Admin"),
-            ["ElevateFail"]      = ("Elevation failed: ", "Không thể nâng cấp quyền: "),
-            ["ElevateFromOption"] = ("This option requires Administrator privileges.\n\nRelaunch WinLic Manager as Administrator now?\n\nNote: The app will restart and the current log will be cleared.",
-                                    "Tùy chọn này yêu cầu quyền Quản trị viên.\n\nKhởi lại WinLic Manager với quyền Admin ngay bây giờ?\n\nLưu ý: Ứng dụng sẽ khởi động lại và nhật ký hiện tại sẽ bị xóa."),
+            ["ElevateFail"]      = ("Elevation failed: ", "Không thể yêu cầu nâng quyền: "),
+            ["ElevateFromOption"] = ("This option requires Administrator privileges.\n\nRelaunch WinLic Manager as Administrator now?\n\nNote: The previous session log will be preserved.",
+                                    "Tùy chọn này yêu cầu quyền Quản trị viên.\n\nKhởi chạy lại WinLic Manager với quyền Admin ngay bây giờ?\n\nLưu ý: Nhật ký phiên trước sẽ được giữ lại."),
 
             // ── Dialog titles (shared) ────────────────────────────────────────────
             ["Confirm_Title"]    = ("Confirm",      "Xác nhận"),
@@ -81,8 +81,10 @@ namespace WinLicApp
             // ── Status bar / general ──────────────────────────────────────────────
             ["Ready"]            = ("Ready",        "Sẵn sàng"),
             ["LogCleared"]       = ("Log cleared.", "Đã xóa nhật ký."),
-            ["Startup_Ready"]    = ("WinLic Manager v1.0 (beta1) — ready.",
-                                    "WinLic Manager v1.0 (beta1) — sẵn sàng."),
+            ["Startup_Ready"]    = ("WinLic Manager v1.0 (beta2) — ready.",
+                                    "WinLic Manager v1.0 (beta2) — sẵn sàng."),
+            ["LogRestored"]      = ("▲ Log restored from previous session (before elevation)",
+                                    "▲ Nhật ký được khôi phục từ phiên trước (trước khi nâng quyền)"),
             ["Startup_NoAdmin"]  = ("Running without Administrator. Options 1, 2, 3, 7 are fully available. Options 4, 5, 6 will prompt for elevation when selected.",
                                     "Không có quyền Quản trị. Tùy chọn 1, 2, 3, 7 hoạt động bình thường. Tùy chọn 4, 5, 6 sẽ yêu cầu nâng quyền khi được chọn."),
 

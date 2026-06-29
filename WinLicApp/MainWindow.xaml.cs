@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net.Sockets;
 using System.Security.Principal;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Documents;
@@ -58,6 +60,13 @@ namespace WinLicApp
         private readonly bool _isAdmin;
         private bool _firstAction = true;
 
+        // Session log temp file — used to preserve log across elevation relaunches.
+        // %TEMP% resolves to the current user's private temp folder
+        // (e.g. C:\Users\<user>\AppData\Local\Temp) and is always writable,
+        // even for standard (non-admin) accounts.
+        private static readonly string SessionLogPath =
+            Path.Combine(Path.GetTempPath(), "winlic_session.log");
+
         // =========================================================================
         // Constructor
         // =========================================================================
@@ -82,6 +91,9 @@ namespace WinLicApp
                 BtnElevate.Visibility      = Visibility.Visible;
                 LogWarn(L.Get("Startup_NoAdmin"));
             }
+
+            // Restore log from the session before elevation (if any)
+            RestoreSessionLog();
         }
 
         // =========================================================================
@@ -135,6 +147,22 @@ namespace WinLicApp
         // =========================================================================
         private void Elevate()
         {
+            // Save current log to %TEMP% so the elevated instance can restore it
+            try
+            {
+                var sb = new StringBuilder();
+                foreach (var block in LogDocument.Blocks)
+                {
+                    if (block is Paragraph p)
+                    {
+                        var text = new TextRange(p.ContentStart, p.ContentEnd).Text;
+                        sb.AppendLine(text);
+                    }
+                }
+                File.WriteAllText(SessionLogPath, sb.ToString(), Encoding.UTF8);
+            }
+            catch { /* best effort — don't block elevation if save fails */ }
+
             try
             {
                 Process.Start(new ProcessStartInfo(Process.GetCurrentProcess().MainModule!.FileName)
@@ -145,6 +173,28 @@ namespace WinLicApp
         }
 
         private void BtnElevate_Click(object sender, RoutedEventArgs e) => Elevate();
+
+        // Restore log lines saved before the last elevation relaunch.
+        // Uses a muted colour so previous-session lines are visually distinct.
+        private void RestoreSessionLog()
+        {
+            if (!File.Exists(SessionLogPath)) return;
+            try
+            {
+                var lines = File.ReadAllLines(SessionLogPath, Encoding.UTF8);
+                File.Delete(SessionLogPath);
+                if (lines.Length == 0) return;
+
+                LogSep();
+                LogLine("  " + L.Get("LogRestored"), ColLabel, bold: true);
+                LogSep();
+                foreach (var line in lines)
+                    if (!string.IsNullOrEmpty(line))
+                        LogLine(line, ColLabel);
+                LogSep();
+            }
+            catch { /* best effort */ }
+        }
 
         // =========================================================================
         // Logging helpers
