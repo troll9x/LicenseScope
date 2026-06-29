@@ -790,6 +790,13 @@ namespace WinLicApp
             LogDiag(L.Get("P7_Limit3"));
             LogDiag(L.Get("P7_Limit4"));
             LogBlank();
+
+            // Show KMS piracy domain count (built-in + user additions from settings.ini)
+            int builtInDomains = AppSettings.DefaultKmsPiracyDomains.Length;
+            int extraDomains   = AppSettings.ExtraKmsPiracyDomains.Count;
+            LogDiag(string.Format(L.Get("P7_KmsDomainCount"),
+                builtInDomains, extraDomains, builtInDomains + extraDomains));
+
             LogSep();
             LogBlank();
 
@@ -846,16 +853,8 @@ namespace WinLicApp
                                    || kmsHost.EndsWith(".intranet", StringComparison.OrdinalIgnoreCase)
                                    || !kmsHost.Contains('.'));
 
-                // 1d. Known piracy cloud KMS providers
-                string[] knownPiracyDomains =
-                {
-                    "msguides",         // km8.msguides.com, kms2.msguides.com…
-                    "kms.loli",         // kms.loli.beer
-                    "digiboy.ir",
-                    "0t.ng",
-                    "kms.chinancce",
-                    "kmscloud",
-                };
+                // 1d. Known piracy cloud KMS providers (from settings.ini + built-in defaults)
+                string[] knownPiracyDomains = AppSettings.AllKmsPiracyDomains;
                 bool isKnownPiracy = knownPiracyDomains
                     .Any(d => kmsHost.IndexOf(d, StringComparison.OrdinalIgnoreCase) >= 0);
 
@@ -871,11 +870,13 @@ namespace WinLicApp
                     LogError($"  Domain: {kmsHost}");
                     criticalKms = true;
                     suspiciousCount++;
+                    CheckKmsHostDns(kmsHost);
                 }
                 else if (isMsOfficial)
                 {
                     LogOk(L.Get("P7_KmsMsOfficial"));
                     LogInfo(L.Get("P7_KmsMsOfficialNote"));
+                    CheckKmsHostDns(kmsHost);
                 }
                 else if (isPrivateIp || isPrivateHost)
                 {
@@ -888,6 +889,7 @@ namespace WinLicApp
                     LogError($"  Server: {kmsHost}");
                     criticalKms = true;
                     suspiciousCount++;
+                    CheckKmsHostDns(kmsHost);
                 }
             }
 
@@ -1057,6 +1059,51 @@ namespace WinLicApp
                 LogWarn(L.Get("P7_Suspicious"));
             else
                 LogOk(L.Get("P7_Clean"));
+        }
+
+        // =========================================================================
+        // KMS DNS resolution helper (called from Option 7)
+        // =========================================================================
+        private void CheckKmsHostDns(string host)
+        {
+            LogInfo(L.Get("P7_CheckDns"));
+
+            // 1. Quick internet check — TCP to Google Public DNS 8.8.8.8:53
+            bool hasInternet = false;
+            try
+            {
+                using var tc = new System.Net.Sockets.TcpClient();
+                var ar = tc.BeginConnect("8.8.8.8", 53, null, null);
+                hasInternet = ar.AsyncWaitHandle.WaitOne(1500) && tc.Connected;
+                try { tc.EndConnect(ar); } catch { }
+            }
+            catch { }
+
+            if (!hasInternet)
+            {
+                LogInfo(L.Get("P7_NoInternet"));
+                return;
+            }
+
+            // 2. Attempt DNS resolution
+            try
+            {
+                var ips     = System.Net.Dns.GetHostAddresses(host);
+                var ipStrs  = ips.Select(ip => ip.ToString()).ToArray();
+                LogInfo(L.Get("P7_KmsDnsResolved") + string.Join(", ", ipStrs));
+
+                // Check if any resolved IP is publicly routable (not RFC 1918 / loopback)
+                bool hasPublicIp = ipStrs.Any(ip =>
+                    !Regex.IsMatch(ip, @"^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|::1)"));
+                if (hasPublicIp)
+                    LogError(L.Get("P7_KmsDnsPublic"));
+                else
+                    LogWarn("  Resolved to private/internal IP — unusual for a cloud KMS domain.");
+            }
+            catch
+            {
+                LogWarn(L.Get("P7_KmsDnsNoResolve"));
+            }
         }
 
         // =========================================================================

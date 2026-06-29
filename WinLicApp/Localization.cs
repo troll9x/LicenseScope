@@ -332,6 +332,20 @@ namespace WinLicApp
                                     "Cổng {0} ĐANG MỞ trên localhost — có dịch vụ KMS cục bộ đang chạy!"),
             ["P7_PortClosed"]    = ("Port {0} on localhost is closed (no local KMS listener).",
                                     "Cổng {0} trên localhost đã đóng — không có dịch vụ KMS cục bộ."),
+
+            // KMS DNS / internet check strings
+            ["P7_KmsDomainCount"]   = ("KMS piracy domains in scan: {0} built-in + {1} from settings.ini  (total: {2})",
+                                       "Tên miền KMS lậu trong lần quét: {0} mặc định + {1} từ settings.ini  (tổng: {2})"),
+            ["P7_CheckDns"]         = ("Checking internet access and resolving host via DNS...",
+                                       "Đang kiểm tra kết nối internet và phân giải tên miền qua DNS..."),
+            ["P7_KmsDnsResolved"]   = ("Resolves to: ",
+                                       "Phân giải thành: "),
+            ["P7_KmsDnsPublic"]     = ("Confirmed active: domain resolves to a public IP address.",
+                                       "Xác nhận đang hoạt động: tên miền phân giải thành địa chỉ IP công cộng."),
+            ["P7_KmsDnsNoResolve"]  = ("Cannot resolve host — service may be offline or DNS-blocked.",
+                                       "Không thể phân giải tên miền — dịch vụ có thể ngoại tuyến hoặc bị chặn DNS."),
+            ["P7_NoInternet"]       = ("No internet access — DNS verification skipped.",
+                                       "Không có kết nối internet — bỏ qua bước xác minh DNS."),
             // legacy keys kept for reference
             ["P7_Port1688Open"]  = ("Port 1688 OPEN on localhost — a local KMS listener is actively running!",
                                     "Cổng 1688 ĐANG MỞ trên localhost — có dịch vụ KMS cục bộ đang chạy!"),

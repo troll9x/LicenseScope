@@ -82,20 +82,31 @@ $DEFAULT_TASKS    = @('AutoKMS','KMSAuto','KMS_VL_ALL','KMSpico','KMSSS',
                        'KMSEmulator','KMService','WinKSO','vlmcsd')
 $DEFAULT_PROCS    = @('KMSpico','KMSELDI','AutoKMS','KMSAuto','KMSguard',
                        'WinKSO','KMService','vlmcsd','AAct','KMS_VL_ALL')
+# Hardcoded safety net -- the full list lives in [KmsPiracyDomains] in settings.ini
+$DEFAULT_KMS_DOMAINS = @(
+    'msguides',       # km8.msguides.com, kms2.msguides.com, kms9.msguides.com
+    'kms.loli',       # kms.loli.beer
+    'digiboy.ir',
+    '0t.ng',
+    'kms.chinancce',
+    'kmscloud'
+)
 
 function Get-ScanLists {
-    $extraPorts = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraPorts' |
-                  Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ }
-    $extraSvc   = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraServices'
-    $extraTasks = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraTaskKeywords'
-    $extraProcs = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraProcesses'
-    $extraFiles = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraFilePaths'
+    $extraPorts   = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraPorts' |
+                    Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ }
+    $extraSvc     = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraServices'
+    $extraTasks   = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraTaskKeywords'
+    $extraProcs   = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraProcesses'
+    $extraFiles   = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraFilePaths'
+    $extraDomains = Read-IniSection -Path $SETTINGS_FILE -Section 'KmsPiracyDomains'
     return @{
-        Ports      = ($DEFAULT_PORTS    + $extraPorts)  | Sort-Object -Unique
-        Services   = ($DEFAULT_SERVICES + $extraSvc)    | Sort-Object -Unique
-        Tasks      = ($DEFAULT_TASKS    + $extraTasks)  | Sort-Object -Unique
-        Processes  = ($DEFAULT_PROCS    + $extraProcs)  | Sort-Object -Unique
+        Ports      = ($DEFAULT_PORTS    + $extraPorts)   | Sort-Object -Unique
+        Services   = ($DEFAULT_SERVICES + $extraSvc)     | Sort-Object -Unique
+        Tasks      = ($DEFAULT_TASKS    + $extraTasks)   | Sort-Object -Unique
+        Processes  = ($DEFAULT_PROCS    + $extraProcs)   | Sort-Object -Unique
         ExtraFiles = $extraFiles
+        KmsDomains = ($DEFAULT_KMS_DOMAINS + $extraDomains) | Sort-Object -Unique
     }
 }
 
@@ -110,9 +121,44 @@ function Write-Fail  { param([string]$msg) Write-Host "[-] $msg" -ForegroundColo
 function Write-Info  { param([string]$msg) Write-Host "    $msg" -ForegroundColor DarkCyan }
 function Write-Cmd   { param([string]$msg) Write-Host "  CMD: $msg" -ForegroundColor DarkGray }
 function Write-Data  {
-    param([string]$label, [string]$value, [ConsoleColor]$color = 'Green')
-    Write-Host ("  {0,-30}" -f $label) -NoNewline
-    Write-Host $value -ForegroundColor $color
+    param([string]$label, [string]$value)
+    Write-Host ("    {0,-28} {1}" -f $label, $value) -ForegroundColor White
+}
+
+# ---- Internet + DNS helpers for KMS cloud check -----------------------------
+function Test-Internet {
+    try {
+        $tcp = New-Object System.Net.Sockets.TcpClient
+        $ar  = $tcp.BeginConnect('8.8.8.8', 53, $null, $null)
+        $ok  = $ar.AsyncWaitHandle.WaitOne(1500) -and $tcp.Connected
+        try { $tcp.EndConnect($ar) } catch {}
+        $tcp.Close()
+        return $ok
+    } catch { return $false }
+}
+
+function Resolve-KmsHost {
+    param([string]$Host)
+    Write-Info 'Checking internet and attempting DNS resolution...'
+    if (-not (Test-Internet)) {
+        Write-Info 'No internet access -- DNS verification skipped.'
+        return
+    }
+    try {
+        $ips = [System.Net.Dns]::GetHostAddresses($Host) | ForEach-Object { $_.ToString() }
+        Write-Info ("Resolves to: " + ($ips -join ', '))
+        $publicIps = $ips | Where-Object {
+            $_ -notmatch '^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|127\.|::1)'
+        }
+        if ($publicIps) {
+            Write-Fail 'Confirmed active: domain resolves to a public IP address.'
+            Write-Fail ("  Public IP(s): " + ($publicIps -join ', '))
+        } else {
+            Write-Warn 'Resolves to a private/internal IP -- unusual for a cloud KMS domain.'
+        }
+    } catch {
+        Write-Warn ("Cannot resolve host '" + $Host + "' -- service may be offline or DNS-blocked.")
+    }
 }
 
 function Mask-Key {
@@ -638,21 +684,23 @@ function Invoke-ActivationAudit {
         $iniStatus  = if (Test-Path $SETTINGS_FILE) { "[loaded]" } else { "[not found -- using built-in defaults]" }
         $iniColor   = if (Test-Path $SETTINGS_FILE) { 'Green'    } else { 'DarkYellow' }
 
-        $extraPortCount  = ($lists.Ports    | Where-Object { $_ -notin $DEFAULT_PORTS    }).Count
-        $extraSvcCount   = ($lists.Services | Where-Object { $_ -notin $DEFAULT_SERVICES }).Count
-        $extraTaskCount  = ($lists.Tasks    | Where-Object { $_ -notin $DEFAULT_TASKS    }).Count
-        $extraProcCount  = ($lists.Processes| Where-Object { $_ -notin $DEFAULT_PROCS    }).Count
-        $extraFileCount  = @($lists.ExtraFiles).Count
+        $extraPortCount   = ($lists.Ports     | Where-Object { $_ -notin $DEFAULT_PORTS    }).Count
+        $extraSvcCount    = ($lists.Services  | Where-Object { $_ -notin $DEFAULT_SERVICES }).Count
+        $extraTaskCount   = ($lists.Tasks     | Where-Object { $_ -notin $DEFAULT_TASKS    }).Count
+        $extraProcCount   = ($lists.Processes | Where-Object { $_ -notin $DEFAULT_PROCS    }).Count
+        $extraFileCount   = @($lists.ExtraFiles).Count
+        $extraDomainCount = ($lists.KmsDomains | Where-Object { $_ -notin $DEFAULT_KMS_DOMAINS }).Count
 
         Write-Host "  SCAN CONFIGURATION" -ForegroundColor White
         Write-Host ("  Settings file:   {0}  " -f $SETTINGS_FILE) -NoNewline
         Write-Host $iniStatus -ForegroundColor $iniColor
         Write-Blank
         Write-Host ("  {0,-18} {1}" -f "Ports to probe:", ($lists.Ports -join ", ")) -ForegroundColor $(if ($extraPortCount) { 'Cyan' } else { 'Gray' })
-        Write-Host ("  {0,-18} {1} built-in{2}" -f "Services:", $DEFAULT_SERVICES.Count, $(if ($extraSvcCount)  { "  + $extraSvcCount custom" }  else { "" })) -ForegroundColor $(if ($extraSvcCount)  { 'Cyan' } else { 'Gray' })
-        Write-Host ("  {0,-18} {1} built-in{2}" -f "Tasks:", $DEFAULT_TASKS.Count, $(if ($extraTaskCount) { "  + $extraTaskCount custom" } else { "" })) -ForegroundColor $(if ($extraTaskCount) { 'Cyan' } else { 'Gray' })
-        Write-Host ("  {0,-18} {1} built-in{2}" -f "Processes:", $DEFAULT_PROCS.Count, $(if ($extraProcCount)  { "  + $extraProcCount custom" }  else { "" })) -ForegroundColor $(if ($extraProcCount)  { 'Cyan' } else { 'Gray' })
+        Write-Host ("  {0,-18} {1} built-in{2}" -f "Services:",   $DEFAULT_SERVICES.Count,    $(if ($extraSvcCount)    { "  + $extraSvcCount custom" }    else { "" })) -ForegroundColor $(if ($extraSvcCount)    { 'Cyan' } else { 'Gray' })
+        Write-Host ("  {0,-18} {1} built-in{2}" -f "Tasks:",      $DEFAULT_TASKS.Count,       $(if ($extraTaskCount)   { "  + $extraTaskCount custom" }   else { "" })) -ForegroundColor $(if ($extraTaskCount)   { 'Cyan' } else { 'Gray' })
+        Write-Host ("  {0,-18} {1} built-in{2}" -f "Processes:",  $DEFAULT_PROCS.Count,       $(if ($extraProcCount)   { "  + $extraProcCount custom" }   else { "" })) -ForegroundColor $(if ($extraProcCount)   { 'Cyan' } else { 'Gray' })
         Write-Host ("  {0,-18} {1}" -f "Extra file paths:", $(if ($extraFileCount) { "$extraFileCount custom" } else { "(none)" })) -ForegroundColor $(if ($extraFileCount) { 'Cyan' } else { 'Gray' })
+        Write-Host ("  {0,-18} {1} built-in{2}" -f "KMS piracy domains:", $DEFAULT_KMS_DOMAINS.Count, $(if ($extraDomainCount) { "  + $extraDomainCount custom" } else { "" })) -ForegroundColor $(if ($extraDomainCount) { 'Cyan' } else { 'Gray' })
         Write-Blank
         Write-Sep
 
@@ -738,9 +786,8 @@ function Invoke-ActivationAudit {
                              $kmsHost -match '\.(local|internal|corp|lan|intranet|home)$' -or
                              $kmsHost -notmatch '\.'
                          )
-        # Known piracy cloud KMS providers (lowercase match)
-        $knownPiracyDomains = @('msguides','kms.loli','digiboy.ir','0t.ng','kms.chinancce','kmscloud')
-        $isKnownPiracy = $knownPiracyDomains | Where-Object { $kmsHost -match [regex]::Escape($_) }
+        # Use the merged list from settings.ini + built-in defaults
+        $isKnownPiracy = $lists.KmsDomains | Where-Object { $kmsHost -match [regex]::Escape($_) }
 
         if ($isLocal) {
             Write-Fail "LOCAL KMS EMULATOR -- KMS server points to localhost/127.x.x.x!"
@@ -754,10 +801,12 @@ function Invoke-ActivationAudit {
             Write-Fail "  It is NOT operated by Microsoft."
             $criticalKms = $true
             $suspiciousCount++
+            Resolve-KmsHost -Host $kmsHost
         } elseif ($isMsOfficial) {
             Write-OK  "Microsoft Azure KMS endpoint -- legitimate Microsoft-operated server."
             Write-Warn "Note: Azure KMS is only valid inside Microsoft Azure virtual machines."
             Write-Warn "If this is NOT an Azure VM, this configuration is unusual."
+            Resolve-KmsHost -Host $kmsHost
         } elseif ($isPrivateIp -or $isPrivateHost) {
             Write-OK  "KMS server is on a private/internal network address."
             Write-Info "Consistent with a legitimate corporate deployment."
@@ -769,6 +818,7 @@ function Invoke-ActivationAudit {
             Write-Warn "  This is almost certainly an unauthorized third-party activation service."
             $criticalKms = $true
             $suspiciousCount++
+            Resolve-KmsHost -Host $kmsHost
         }
     } else {
         Write-OK "No KMS server configured."
