@@ -65,6 +65,7 @@ namespace WinLicApp
         {
             _isAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent())
                            .IsInRole(WindowsBuiltInRole.Administrator);
+            AppSettings.Load();
             InitializeComponent();
             RefreshLanguage();
 
@@ -99,10 +100,11 @@ namespace WinLicApp
             BtnVersionInfo.Content     = L.Get("Btn1");
             BtnSlmgrDli.Content        = L.Get("Btn2");
             BtnInspectKeys.Content     = L.Get("Btn3");
-            BtnPiracyCheck.Content     = L.Get("Btn7");
             BtnTestKey.Content         = L.Get("Btn4");
             BtnRemoveLicense.Content   = L.Get("Btn5");
             BtnResetActivation.Content = L.Get("Btn6");
+            BtnPiracyCheck.Content     = L.Get("Btn7");
+            BtnAuditSettings.Content   = L.Get("BtnAuditSettings");
             BtnClear.Content           = L.Get("BtnClear");
             StatusBar.Text             = L.Get("Ready");
 
@@ -123,6 +125,12 @@ namespace WinLicApp
         // =========================================================================
         private void BtnAbout_Click(object sender, RoutedEventArgs e)
             => new AboutDialog { Owner = this }.ShowDialog();
+
+        // =========================================================================
+        // Option 7 — Audit settings
+        // =========================================================================
+        private void BtnAuditSettings_Click(object sender, RoutedEventArgs e)
+            => new SettingsDialog { Owner = this }.ShowDialog();
 
         // =========================================================================
         // Elevation
@@ -432,6 +440,7 @@ namespace WinLicApp
             LogAction("Act2");
             LogInfo(L.Get("O2_Note"));
             LogBlank();
+            LogFetch("Running  slmgr /dli…  (slmgr: Software Licensing Manager)");
             var output = RunSlmgr("/dli");
             if (string.IsNullOrWhiteSpace(output))
                 LogWarn(L.Get("O2_NoOutput"));
@@ -774,37 +783,36 @@ namespace WinLicApp
                 }
             }
 
-            // ── 2. Probe localhost:1688 (KMS listener) ────────────────────────
+            // ── 2. Probe localhost on all configured KMS port(s) ──────────────────
             LogFetch(L.Get("Fetch_Port1688"));
             LogDiag(L.Get("P7_Port1688Explain"));
-            bool port1688 = false;
-            try
+            foreach (var port in AppSettings.AllPorts)
             {
-                using var tcp = new System.Net.Sockets.TcpClient();
-                var ar = tcp.BeginConnect("127.0.0.1", 1688, null, null);
-                port1688 = ar.AsyncWaitHandle.WaitOne(800) && tcp.Connected;
-                try { tcp.EndConnect(ar); } catch { }
-            }
-            catch { }
-            if (port1688)
-            {
-                LogError(L.Get("P7_Port1688Open"));
-                criticalKms = true;
-                suspiciousCount++;
-            }
-            else
-            {
-                LogOk(L.Get("P7_Port1688Closed"));
+                bool open = false;
+                try
+                {
+                    using var tcp = new TcpClient();
+                    var ar = tcp.BeginConnect("127.0.0.1", port, null, null);
+                    open = ar.AsyncWaitHandle.WaitOne(800) && tcp.Connected;
+                    try { tcp.EndConnect(ar); } catch { }
+                }
+                catch { }
+                if (open)
+                {
+                    LogError(string.Format(L.Get("P7_PortOpen"), port));
+                    criticalKms = true;
+                    suspiciousCount++;
+                }
+                else
+                {
+                    LogOk(string.Format(L.Get("P7_PortClosed"), port));
+                }
             }
 
             // ── 3. Suspicious services ───────────────────────────────────
             LogFetch(L.Get("Fetch_Services"));
             LogDiag(L.Get("P7_ServiceExplain"));
-            var susServices = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "KMSpico", "KMService", "WinKSO", "KMSELDI", "KMS_VL_ALL",
-                "KMSAuto", "AutoKMS", "KMSSS", "KMSEmulator", "vlmcsd"
-            };
+            var susServices = AppSettings.AllServices;
             var foundServices = new List<string>();
             using var svcRes = WmiQuery(
                 "SELECT Name,DisplayName FROM Win32_Service");
@@ -827,10 +835,7 @@ namespace WinLicApp
             // ── 4. Suspicious scheduled tasks ───────────────────────────
             LogFetch(L.Get("Fetch_Tasks"));
             LogDiag(L.Get("P7_TaskExplain"));
-            var susTaskKeywords = new[] {
-                "AutoKMS", "KMSAuto", "KMS_VL_ALL", "KMSpico", "KMSSS",
-                "KMSEmulator", "KMService", "WinKSO", "vlmcsd"
-            };
+            var susTaskKeywords = AppSettings.AllTaskKeywords;
             var foundTasks = new List<string>();
             try
             {
@@ -871,7 +876,8 @@ namespace WinLicApp
             var win  = Environment.GetEnvironmentVariable("SystemRoot") ?? @"C:\Windows";
             var sys  = System.IO.Path.Combine(win, "System32");
 
-            var suspiciousPaths = new (string Path, string Tool)[]
+            // Build the built-in suspicious path list
+            var builtInPaths = new (string Path, string Tool)[]
             {
                 (System.IO.Path.Combine(pf,   "KMSpico"),       "KMSpico"),
                 (System.IO.Path.Combine(pf86, "KMSpico"),       "KMSpico"),
@@ -888,6 +894,13 @@ namespace WinLicApp
                 (System.IO.Path.Combine(pf86, "AAct"),          "AAct"),
             };
 
+            // Merge with user-added paths
+            var allPaths = builtInPaths.ToList();
+            foreach (var extra in AppSettings.ExtraFilePaths)
+                allPaths.Add((extra, "[Custom]"));
+
+            var suspiciousPaths = allPaths.ToArray();
+
             var foundFiles = new List<string>();
             foreach (var (path, tool) in suspiciousPaths)
             {
@@ -903,11 +916,7 @@ namespace WinLicApp
             // ── 6. Suspicious running processes ───────────────────────────
             LogFetch(L.Get("Fetch_Procs"));
             LogDiag(L.Get("P7_ProcExplain"));
-            var susProcNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "KMSpico", "KMSELDI", "AutoKMS", "KMSAuto", "KMSguard",
-                "WinKSO",  "KMService", "vlmcsd", "AAct", "KMS_VL_ALL"
-            };
+            var susProcNames = AppSettings.AllProcesses;
             var foundProcs = new List<string>();
             try
             {
