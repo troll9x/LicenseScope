@@ -474,11 +474,29 @@ function Test-ProductKey {
     Write-Info "Tests a product key by attempting local installation via slmgr /ipk."
     Write-Info "If the key matches the installed edition and is valid, it will be accepted."
     Write-Info "If rejected (SKU mismatch / invalid / blocked), an error code is returned."
-    Write-Info "Your existing activation will NOT be harmed by a rejected key."
     Write-Sep
     Write-Blank
 
-    $rawKey = Read-Host "  Enter the 25-character product key (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)"
+    # Show current active key for reference
+    Write-Step "Reading current active license..."
+    $activeProduct = Get-CimInstance -ClassName SoftwareLicensingProduct |
+                     Where-Object { $_.PartialProductKey -and $_.Name -like "Windows*" }
+    if ($activeProduct) {
+        Write-Data "  Current edition:"     $activeProduct.Name
+        Write-Data "  Current partial key:" $activeProduct.PartialProductKey Cyan
+        $statusText = switch ($activeProduct.LicenseStatus) {
+            1 { "Licensed (Activated)" } 0 { "Unlicensed" } default { "Other ($($activeProduct.LicenseStatus))" }
+        }
+        $statusColor = if ($activeProduct.LicenseStatus -eq 1) { 'Green' } else { 'Yellow' }
+        Write-Data "  Current status:"     $statusText $statusColor
+    } else {
+        Write-Warn "  No active license detected."
+    }
+    Write-Blank
+    Write-Sep
+    Write-Blank
+
+    $rawKey = Read-Host "  Enter the new 25-character product key (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)"
     $key    = $rawKey.Trim().ToUpper()
 
     if ($key -notmatch '^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$') {
@@ -487,6 +505,23 @@ function Test-ProductKey {
     }
 
     $displayKey = if (Ask-YesNo "Show full key in the command log?") { $key } else { Mask-Key $key }
+
+    # Confirmation before installing
+    Write-Blank
+    Write-Sep
+    Write-Warn "CONFIRM INSTALLATION"
+    Write-Host "  New key  : $displayKey" -ForegroundColor Cyan
+    if ($activeProduct) {
+        Write-Host ("  Replaces : ...{0}  ({1})" -f $activeProduct.PartialProductKey, $activeProduct.Name) -ForegroundColor DarkYellow
+    }
+    Write-Warn "If accepted, this key will REPLACE your current product key immediately."
+    Write-Sep
+    Write-Blank
+
+    if (-not (Ask-YesNo "Install this key now?")) {
+        Write-Warn "Cancelled -- no changes made."
+        return
+    }
 
     Write-Blank
     Write-Step "Installing product key..."
