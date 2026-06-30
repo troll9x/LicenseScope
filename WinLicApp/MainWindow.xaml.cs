@@ -815,6 +815,18 @@ namespace WinLicApp
             }
             catch { }
 
+            // Also check WoW64 registry path
+            if (string.IsNullOrEmpty(kmsHost))
+            {
+                try
+                {
+                    using var rk2 = Registry.LocalMachine.OpenSubKey(
+                        @"SOFTWARE\WOW6432Node\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform");
+                    kmsHost = rk2?.GetValue("KeyManagementServiceName")?.ToString();
+                }
+                catch { }
+            }
+
             // Also check WMI SoftwareLicensingService
             if (string.IsNullOrEmpty(kmsHost))
             {
@@ -837,7 +849,10 @@ namespace WinLicApp
                             || kmsHost.StartsWith("127.") || kmsHost.StartsWith("::1")
                             || kmsHost == "0.0.0.0";
 
-                // 1b. Microsoft-operated Azure KMS (only valid inside Azure VMs)
+                // 1b. MAS bogus placeholder IP — 10.0.0.10 is non-routable, used when no renewal task installed
+                bool isBogusPlaceholder = kmsHost == "10.0.0.10";
+
+                // 1c. Microsoft-operated Azure KMS (only valid inside Azure VMs)
                 bool isMsOfficial = kmsHost.EndsWith(".microsoft.com", StringComparison.OrdinalIgnoreCase)
                                  || kmsHost.EndsWith(".windows.net",   StringComparison.OrdinalIgnoreCase);
 
@@ -861,6 +876,12 @@ namespace WinLicApp
                 if (isLocal)
                 {
                     LogError(L.Get("P7_KmsLocal"));
+                    criticalKms = true;
+                    suspiciousCount++;
+                }
+                else if (isBogusPlaceholder)
+                {
+                    LogError(L.Get("P7_KmsBogusIp"));
                     criticalKms = true;
                     suspiciousCount++;
                 }
@@ -1002,6 +1023,11 @@ namespace WinLicApp
                 (System.IO.Path.Combine(sys,  "SppExtComObj.exe.bak"), "Patched SPP backup"),
                 (System.IO.Path.Combine(pf,   "AAct"),          "AAct"),
                 (System.IO.Path.Combine(pf86, "AAct"),          "AAct"),
+                // KMS38 / ClipSVC artifact
+                (@"C:\ProgramData\Microsoft\Windows\ClipSVC\GenuineTicket\GenuineTicket.xml", "KMS38 GenuineTicket"),
+                // MAS Online KMS renewal task artifacts
+                (@"C:\Program Files\Activation-Renewal\Activation_task.cmd", "MAS Online KMS renewal task"),
+                (@"C:\Program Files\Activation-Renewal\Info.txt",            "MAS Online KMS renewal info"),
             };
 
             // Merge with user-added paths
@@ -1048,17 +1074,216 @@ namespace WinLicApp
                 foreach (var p in foundProcs)
                 { LogWarn(L.Get("P7_ProcFound") + "  " + p); suspiciousCount++; }
 
+            // ── 7. GVLK + Activation Channel Check (WMI) ────────────────
+            LogBlank();
+            LogSep();
+            LogFetch(L.Get("Fetch_ActChannel"));
+            LogDiag(L.Get("P7_GvlkExplain"));
+            LogDiag(string.Format(L.Get("SD_GvlkCount"), AppSettings.AllGvlkSuffixes.Count));
+            try
+            {
+                using var licSearch = WmiQuery(
+                    "SELECT PartialProductKey, LicenseStatus, Description, GracePeriodRemaining " +
+                    "FROM Win32_SoftwareLicensingProduct " +
+                    "WHERE ApplicationID = '55c92734-d682-4d71-983e-d6ec3f16059f'");
+                bool foundAnyKey = false;
+                if (licSearch != null)
+                {
+                    foreach (ManagementObject mo in licSearch)
+                    {
+                        string? ppk = mo["PartialProductKey"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(ppk)) continue;
+                        foundAnyKey = true;
+
+                        uint licStatus = 0;
+                        try { licStatus = Convert.ToUInt32(mo["LicenseStatus"]); } catch { }
+                        uint graceMins = 0;
+                        try { graceMins = Convert.ToUInt32(mo["GracePeriodRemaining"]); } catch { }
+                        string desc = mo["Description"]?.ToString() ?? "";
+
+                        bool isLicensed  = licStatus == 1;
+                        bool isPermanent = graceMins == 0 && isLicensed;
+                        bool isGvlk      = AppSettings.AllGvlkSuffixes.Contains(ppk);
+                        bool isPhone     = desc.IndexOf("phone", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                        // 7a. Phone activation anomaly (TSforge ZeroCID indicator)
+                        if (isPhone && isLicensed)
+                        {
+                            LogError(L.Get("P7_PhoneChannel"));
+                            criticalKms = true;
+                            suspiciousCount++;
+                        }
+
+                        // 7b. GVLK + permanent = piracy (legitimate KMS always has 180-day countdown)
+                        if (isGvlk && isPermanent)
+                        {
+                            LogError(string.Format(L.Get("P7_GvlkPermanent"), ppk));
+                            criticalKms = true;
+                            suspiciousCount++;
+                        }
+                        else if (isGvlk)
+                        {
+                            LogOk(string.Format(L.Get("P7_GvlkWithKms"), ppk));
+                        }
+                        else
+                        {
+                            LogOk(L.Get("P7_NoGvlk"));
+                        }
+
+                        // 7c. Office KMS registry bonus check
+                        try
+                        {
+                            string? offKms = null;
+                            using var offRk = Registry.LocalMachine.OpenSubKey(
+                                @"SOFTWARE\Microsoft\OfficeSoftwareProtectionPlatform");
+                            offKms = offRk?.GetValue("KeyManagementServiceName")?.ToString();
+                            if (!string.IsNullOrWhiteSpace(offKms))
+                            {
+                                bool offPiracy = AppSettings.AllKmsPiracyDomains
+                                    .Any(d => offKms.IndexOf(d, StringComparison.OrdinalIgnoreCase) >= 0);
+                                bool offExternal =
+                                    !Regex.IsMatch(offKms, @"^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|127\.)") &&
+                                    !offKms.Equals("localhost", StringComparison.OrdinalIgnoreCase);
+                                if (offPiracy || offExternal)
+                                {
+                                    LogWarn(string.Format(L.Get("P7_OfficeKmsFound"), offKms));
+                                    suspiciousCount++;
+                                }
+                            }
+                        }
+                        catch { }
+
+                        // ── 8. Expiry / grace period analysis
+                        LogBlank();
+                        LogSep();
+                        LogFetch("\u2467 Analyzing activation expiry (WMI)…");
+                        LogDiag(L.Get("P7_ExpiryExplain"));
+
+                        if (graceMins == 0 && isLicensed)
+                        {
+                            LogInfo(L.Get("P7_ExpiryPermanent"));
+                        }
+                        else if (graceMins > 0)
+                        {
+                            var expiry = DateTime.Now.AddMinutes(graceMins);
+                            if (expiry.Year >= 2100)
+                            {
+                                LogError(string.Format(L.Get("P7_TsforgeExpiry"), expiry.Year));
+                                criticalKms = true;
+                                suspiciousCount++;
+                            }
+                            else if (expiry.Year >= 2037)
+                            {
+                                LogError(string.Format(L.Get("P7_Kms38Expiry"), expiry.Year));
+                                criticalKms = true;
+                                suspiciousCount++;
+                            }
+                            else
+                            {
+                                double daysLeft = (expiry - DateTime.Now).TotalDays;
+                                if (daysLeft >= 165 && daysLeft <= 195)
+                                {
+                                    LogWarn(L.Get("P7_OnlineKms180"));
+                                    suspiciousCount++;
+                                }
+                                else
+                                {
+                                    LogOk(L.Get("P7_ExpiryNormal"));
+                                }
+                            }
+                        }
+
+                        break; // Only process the first licensed key entry
+                    }
+                }
+                if (!foundAnyKey)
+                    LogInfo("No licensed Windows product key found via WMI.");
+            }
+            catch (Exception ex) { LogWarn($"WMI activation channel error: {ex.Message}"); }
+
+            // ── 9. TSforge SPP store file timestamp (LOW CONFIDENCE) ───────
+            LogBlank();
+            LogSep();
+            LogFetch(L.Get("Fetch_SppEvents"));
+            LogDiag(L.Get("P7_SppStoreExplain"));
+            try
+            {
+                const string datPath = @"C:\Windows\System32\spp\store\2.0\data.dat";
+                if (!System.IO.File.Exists(datPath))
+                {
+                    LogInfo(L.Get("P7_SppStoreNotFound"));
+                }
+                else
+                {
+                    var datMod = System.IO.File.GetLastWriteTime(datPath);
+
+                    // Get Windows install date from registry
+                    DateTime installDate = DateTime.MinValue;
+                    try
+                    {
+                        using var rk = Registry.LocalMachine.OpenSubKey(
+                            @"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+                        if (rk?.GetValue("InstallDate") is int epoch)
+                            installDate = DateTimeOffset.FromUnixTimeSeconds(epoch).LocalDateTime;
+                    }
+                    catch { }
+
+                    // Check for nearby Windows Update event (ID 19 = successful update installed)
+                    bool hasNearbyUpdate = false;
+                    try
+                    {
+                        var evLog = new System.Diagnostics.EventLog("System");
+                        foreach (System.Diagnostics.EventLogEntry ev in evLog.Entries)
+                        {
+                            if (ev.InstanceId == 19 && Math.Abs((ev.TimeWritten - datMod).TotalHours) < 48)
+                            { hasNearbyUpdate = true; break; }
+                        }
+                    }
+                    catch { }
+
+                    if (hasNearbyUpdate)
+                        LogOk(L.Get("P7_SppStoreOk"));
+                    else if (datMod > installDate.AddDays(2))
+                    {
+                        LogWarn(string.Format(L.Get("P7_SppStoreModified"),
+                            datMod.ToString("yyyy-MM-dd HH:mm")));
+                        suspiciousCount++;
+                    }
+                    else
+                        LogOk(L.Get("P7_SppStoreOk"));
+                }
+            }
+            catch (Exception ex) { LogWarn($"SPP store check error: {ex.Message}"); }
+
             // ── Summary ────────────────────────────────────────────────────
             LogBlank();
             LogSep();
             LogLine($"  {L.Get("P7_SummaryHeader")}", ColAction, bold: true);
             LogBlank();
             if (criticalKms)
+            {
                 LogError(L.Get("P7_Critical"));
+                if (suspiciousCount > 1)
+                    LogError($"  Total indicators flagged: {suspiciousCount}");
+            }
             else if (suspiciousCount > 0)
+            {
                 LogWarn(L.Get("P7_Suspicious"));
+                LogWarn($"  Total indicators flagged: {suspiciousCount}");
+            }
             else
                 LogOk(L.Get("P7_Clean"));
+
+            // ── Legal notice (always shown) ─────────────────────────────
+            LogBlank();
+            LogSep();
+            LogLine($"  {L.Get("P7_LegalHeader")}", ColWarn, bold: true);
+            LogDiag(L.Get("P7_LegalLine1"));
+            LogDiag(L.Get("P7_LegalLine2"));
+            LogDiag(L.Get("P7_LegalLine3"));
+            LogDiag(L.Get("P7_LegalLine4"));
+            LogBlank();
+            LogDiag(L.Get("P7_LegalScanLimit"));
         }
 
         // =========================================================================

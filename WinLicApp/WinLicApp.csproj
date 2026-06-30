@@ -16,6 +16,7 @@
   <!-- System.Management is built into .NET Framework 4.8 — no NuGet needed -->
   <ItemGroup>
     <Reference Include="System.Management" />
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
 
   <ItemGroup>

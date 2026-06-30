@@ -2,51 +2,74 @@
 // AppSettings.cs  --  WinLic Manager
 // =============================================================================
 // Persists user customizations for the Option 7 audit scan to settings.ini
-// placed alongside the executable.  Built-in defaults are never written to
-// disk as active entries -- the file documents them as comments.
+// placed alongside the executable.  The file has two blocks:
+//   DEFAULT -- managed by WinLic, updated from GitHub (settings.default.ini)
+//   USER    -- user additions, never overwritten by updates
 //
 // settings.ini section names use CamelCase (e.g. [ExtraPorts]) which is the
 // canonical format shared with the PowerShell CLI.  The parser normalizes
 // section headers by stripping underscores and uppercasing so both
 // [ExtraPorts] and [EXTRA_PORTS] map to the same bucket.
+//
+// GVLK keys use key=value format:
+//   W269N-WFGWX-YVC9B-4J6C9-T83GX = Windows 11/10 Pro
+// The parser extracts the last 5 characters of the key portion and stores
+// them in GvlkKeySuffixes for matching against WMI PartialProductKey.
 // =============================================================================
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace WinLicApp
 {
     public static class AppSettings
     {
-        // ── Resolved path ─────────────────────────────────────────────────────────
+        // ── Paths ──────────────────────────────────────────────────────────────
         private static readonly string SettingsPath =
             Path.Combine(
                 Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".",
                 "settings.ini");
 
-        // ── Built-in defaults (read-only, always active) ──────────────────────────
-        public static readonly int[]    DefaultPorts        = { 1688 };
-        public static readonly string[] DefaultServices     =
+        /// <summary>GitHub raw URL for the default settings block.</summary>
+        private const string DefaultsUrl =
+            "https://raw.githubusercontent.com/ardennguyen/WinLic/main/WinLicPS/settings.default.ini";
+
+        /// <summary>
+        /// Marker line that separates the DEFAULT block from the USER block
+        /// in settings.ini. The update routine replaces everything above this line.
+        /// </summary>
+        private const string UserBlockMarker = "USER BLOCK";
+
+        // ── Built-in fallback defaults (used if settings.ini is missing) ──────
+        // These are a minimal safety net. The authoritative list lives in
+        // [KmsPiracyDomains] and [GvlkKeys] inside settings.ini.
+        public static readonly int[] DefaultPorts = { 1688 };
+
+        public static readonly string[] DefaultServices =
         {
             "KMSpico", "KMService", "WinKSO", "KMSELDI", "KMS_VL_ALL",
-            "KMSAuto", "AutoKMS",  "KMSSS",  "KMSEmulator", "vlmcsd"
+            "KMSAuto", "AutoKMS",  "KMSSS",  "KMSEmulator", "vlmcsd",
+            "Activation-Renewal"
         };
-        public static readonly string[] DefaultProcesses    =
+        public static readonly string[] DefaultProcesses =
         {
             "KMSpico", "KMSELDI", "AutoKMS", "KMSAuto", "KMSguard",
-            "WinKSO",  "KMService", "vlmcsd", "AAct",   "KMS_VL_ALL"
+            "WinKSO",  "KMService", "vlmcsd", "AAct",   "KMS_VL_ALL",
+            "gatherosstate"
         };
         public static readonly string[] DefaultTaskKeywords =
         {
             "AutoKMS", "KMSAuto", "KMS_VL_ALL", "KMSpico",
-            "KMSSS",   "KMSEmulator", "KMService", "WinKSO", "vlmcsd"
+            "KMSSS",   "KMSEmulator", "KMService", "WinKSO", "vlmcsd",
+            "Activation-Renewal"
         };
 
-        // Known cloud KMS piracy services — minimal hardcoded safety net.
-        // The FULL authoritative list lives in [KmsPiracyDomains] in settings.ini.
-        // Matching is case-insensitive substring: "msguides" catches km8.msguides.com etc.
+        // Minimal hardcoded piracy domain safety net. The full authoritative
+        // list comes from [KmsPiracyDomains] in settings.ini.
         public static readonly string[] DefaultKmsPiracyDomains =
         {
             "msguides",       // km8.msguides.com, kms2.msguides.com, kms9.msguides.com
@@ -57,26 +80,78 @@ namespace WinLicApp
             "kmscloud",
         };
 
-        // ── User-added extras (populated by Load()) ───────────────────────────────
+        // ── Loaded from settings.ini DEFAULT block ─────────────────────────────
+        /// <summary>Last-5-char suffixes from [GvlkKeys] in the default block.</summary>
+        public static HashSet<string> DefaultGvlkSuffixes { get; private set; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Piracy domains from [KmsPiracyDomains] in the default block.</summary>
+        public static List<string> DefaultIniKmsPiracyDomains { get; private set; } = new List<string>();
+
+        /// <summary>Services from [DefaultServices] in settings.ini default block.</summary>
+        public static List<string> DefaultIniServices { get; private set; } = new List<string>();
+
+        /// <summary>Tasks from [DefaultTaskKeywords] in settings.ini default block.</summary>
+        public static List<string> DefaultIniTaskKeywords { get; private set; } = new List<string>();
+
+        /// <summary>Processes from [DefaultProcesses] in settings.ini default block.</summary>
+        public static List<string> DefaultIniProcesses { get; private set; } = new List<string>();
+
+        /// <summary>Files from [DefaultFilePaths] in settings.ini default block.</summary>
+        public static List<string> DefaultIniFilePaths { get; private set; } = new List<string>();
+
+        /// <summary>Ports from [DefaultPorts] in settings.ini default block.</summary>
+        public static List<int> DefaultIniPorts { get; private set; } = new List<int>();
+
+        // ── Loaded from settings.ini USER block ────────────────────────────────
         public static List<int>    ExtraPorts            { get; set; } = new List<int>();
         public static List<string> ExtraServices         { get; set; } = new List<string>();
         public static List<string> ExtraProcesses        { get; set; } = new List<string>();
         public static List<string> ExtraTaskKeywords     { get; set; } = new List<string>();
         public static List<string> ExtraFilePaths        { get; set; } = new List<string>();
         public static List<string> ExtraKmsPiracyDomains { get; set; } = new List<string>();
+        public static List<string> UserGvlkSuffixes      { get; set; } = new List<string>();
 
-        // ── Merged views (defaults + user additions) ──────────────────────────────
-        public static int[]           AllPorts            => DefaultPorts.Concat(ExtraPorts).Distinct().ToArray();
-        public static HashSet<string> AllServices         => new HashSet<string>(DefaultServices.Concat(ExtraServices),     StringComparer.OrdinalIgnoreCase);
-        public static HashSet<string> AllProcesses        => new HashSet<string>(DefaultProcesses.Concat(ExtraProcesses),   StringComparer.OrdinalIgnoreCase);
-        public static string[]        AllTaskKeywords     => DefaultTaskKeywords.Concat(ExtraTaskKeywords).Distinct().ToArray();
+        // ── Merged views (defaults + ini defaults + user additions) ────────────
+        public static int[] AllPorts =>
+            DefaultPorts
+            .Concat(DefaultIniPorts)
+            .Concat(ExtraPorts)
+            .Distinct().ToArray();
 
-        // Full piracy-domain list: built-in defaults + anything added in settings.ini.
-        // Callers do a case-insensitive substring match against this list.
-        public static string[]        AllKmsPiracyDomains => DefaultKmsPiracyDomains.Concat(ExtraKmsPiracyDomains)
-                                                             .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        public static HashSet<string> AllServices =>
+            new HashSet<string>(
+                DefaultServices
+                .Concat(DefaultIniServices)
+                .Concat(ExtraServices),
+                StringComparer.OrdinalIgnoreCase);
 
-        // ── IO ────────────────────────────────────────────────────────────────────
+        public static HashSet<string> AllProcesses =>
+            new HashSet<string>(
+                DefaultProcesses
+                .Concat(DefaultIniProcesses)
+                .Concat(ExtraProcesses),
+                StringComparer.OrdinalIgnoreCase);
+
+        public static string[] AllTaskKeywords =>
+            DefaultTaskKeywords
+            .Concat(DefaultIniTaskKeywords)
+            .Concat(ExtraTaskKeywords)
+            .Distinct().ToArray();
+
+        /// <summary>All GVLK key suffixes (last 5 chars) from both default and user sections.</summary>
+        public static HashSet<string> AllGvlkSuffixes =>
+            new HashSet<string>(
+                DefaultGvlkSuffixes.Concat(UserGvlkSuffixes),
+                StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Full piracy-domain list: hardcoded + ini defaults + user additions.</summary>
+        public static string[] AllKmsPiracyDomains =>
+            DefaultKmsPiracyDomains
+            .Concat(DefaultIniKmsPiracyDomains)
+            .Concat(ExtraKmsPiracyDomains)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+        // ── IO ────────────────────────────────────────────────────────────────
         /// <summary>
         /// Normalizes a settings.ini section name so that [ExtraPorts],
         /// [EXTRA_PORTS], and [extra_ports] all resolve to "EXTRAPORTS".
@@ -84,11 +159,42 @@ namespace WinLicApp
         private static string NormalizeSection(string raw) =>
             raw.Replace("_", "").Replace(" ", "").ToUpperInvariant();
 
+        /// <summary>
+        /// Extract the last 5 alphanumeric characters of a product key string.
+        /// Input: "W269N-WFGWX-YVC9B-4J6C9-T83GX" → "T83GX"
+        /// </summary>
+        private static string? ExtractKeySuffix(string keyLine)
+        {
+            // Strip comment portion (everything after '=')
+            var key = keyLine.Contains('=') ? keyLine.Substring(0, keyLine.IndexOf('=')).Trim() : keyLine.Trim();
+            // Strip dashes and take last 5 chars
+            var alnum = key.Replace("-", "").Replace(" ", "");
+            if (alnum.Length < 5) return null;
+            return alnum.Substring(alnum.Length - 5).ToUpperInvariant();
+        }
+
+        /// <summary>Strip inline comments from a settings value line (text after ';').</summary>
+        private static string StripInlineComment(string line)
+        {
+            var idx = line.IndexOf(';');
+            return idx >= 0 ? line.Substring(0, idx).Trim() : line.Trim();
+        }
+
         public static void Load()
         {
+            // Reset all loaded lists
+            DefaultGvlkSuffixes.Clear();
+            DefaultIniKmsPiracyDomains.Clear();
+            DefaultIniServices.Clear();
+            DefaultIniTaskKeywords.Clear();
+            DefaultIniProcesses.Clear();
+            DefaultIniFilePaths.Clear();
+            DefaultIniPorts.Clear();
+
             ExtraPorts.Clear(); ExtraServices.Clear();
             ExtraProcesses.Clear(); ExtraTaskKeywords.Clear();
             ExtraFilePaths.Clear(); ExtraKmsPiracyDomains.Clear();
+            UserGvlkSuffixes.Clear();
 
             if (!File.Exists(SettingsPath)) return;
             try
@@ -97,7 +203,7 @@ namespace WinLicApp
                 foreach (var raw in File.ReadAllLines(SettingsPath))
                 {
                     var l = raw.Trim();
-                    // Skip blanks and comments (both ; and # are comment chars)
+                    // Skip blanks and full-line comments (both ; and # are comment chars)
                     if (string.IsNullOrEmpty(l) || l.StartsWith(";") || l.StartsWith("#")) continue;
                     if (l.StartsWith("[") && l.EndsWith("]"))
                     {
@@ -105,22 +211,55 @@ namespace WinLicApp
                         continue;
                     }
 
+                    // Strip inline comments for value parsing
+                    var value = StripInlineComment(l);
+                    if (string.IsNullOrWhiteSpace(value)) continue;
+
                     switch (section)
                     {
-                        // Both [ExtraPorts] and [EXTRA_PORTS] normalize to EXTRAPORTS
-                        case "EXTRAPORTS":
-                            if (int.TryParse(l, out int p)) ExtraPorts.Add(p); break;
-                        case "EXTRASERVICES":
-                            if (!string.IsNullOrWhiteSpace(l)) ExtraServices.Add(l); break;
-                        case "EXTRAPROCESSES":
-                            if (!string.IsNullOrWhiteSpace(l)) ExtraProcesses.Add(l); break;
-                        // [ExtraTaskKeywords] and [EXTRA_TASK_KEYWORDS] both -> EXTRATASKEYWORDS
-                        case "EXTRATASKEYWORDS":
-                            if (!string.IsNullOrWhiteSpace(l)) ExtraTaskKeywords.Add(l); break;
-                        case "EXTRAFILEPATHS":
-                            if (!string.IsNullOrWhiteSpace(l)) ExtraFilePaths.Add(l); break;
+                        // ── DEFAULT block sections ──────────────────────────
+                        case "GVLKKEYS":
+                        {
+                            var suffix = ExtractKeySuffix(value);
+                            if (suffix != null) DefaultGvlkSuffixes.Add(suffix);
+                            break;
+                        }
                         case "KMSPIRACYDOMAINS":
-                            if (!string.IsNullOrWhiteSpace(l)) ExtraKmsPiracyDomains.Add(l); break;
+                            DefaultIniKmsPiracyDomains.Add(value); break;
+                        case "DEFAULTPORTS":
+                            if (int.TryParse(value, out int dp)) DefaultIniPorts.Add(dp); break;
+                        case "DEFAULTSERVICES":
+                            DefaultIniServices.Add(value); break;
+                        case "DEFAULTTASKEYWORDS":
+                        case "DEFAULTTASKKEYWORDS":
+                            DefaultIniTaskKeywords.Add(value); break;
+                        case "DEFAULTPROCESSES":
+                            DefaultIniProcesses.Add(value); break;
+                        case "DEFAULTFILEPATHS":
+                            DefaultIniFilePaths.Add(value); break;
+
+                        // ── USER block sections ─────────────────────────────
+                        case "USERGVLKKEYS":
+                        {
+                            var suffix = ExtractKeySuffix(value);
+                            if (suffix != null) UserGvlkSuffixes.Add(suffix);
+                            break;
+                        }
+                        case "USERKMSPIRACYDOMAINS":
+                            ExtraKmsPiracyDomains.Add(value); break;
+
+                        // Legacy / user extra sections (backward compatible)
+                        case "EXTRAPORTS":
+                            if (int.TryParse(value, out int p)) ExtraPorts.Add(p); break;
+                        case "EXTRASERVICES":
+                            ExtraServices.Add(value); break;
+                        case "EXTRAPROCESSES":
+                            ExtraProcesses.Add(value); break;
+                        case "EXTRATASKEYWORDS":
+                        case "EXTRATASKKEYWORDS":
+                            ExtraTaskKeywords.Add(value); break;
+                        case "EXTRAFILEPATHS":
+                            ExtraFilePaths.Add(value); break;
                     }
                 }
             }
@@ -129,54 +268,156 @@ namespace WinLicApp
 
         public static void Save()
         {
+            // Save only user-block sections. The default block is managed by
+            // UpdateDefaultsAsync() and preserved as-is.
+            if (!File.Exists(SettingsPath))
+            {
+                // If settings.ini doesn't exist, create a minimal user block.
+                try
+                {
+                    using var w = new StreamWriter(SettingsPath, append: false);
+                    WriteUserBlock(w);
+                }
+                catch { }
+                return;
+            }
+
             try
             {
-                using var w = new StreamWriter(SettingsPath, append: false);
-                w.WriteLine("; =============================================================================");
-                w.WriteLine("; settings.ini  --  WinLic Manager -- Option 7 Scan Configuration");
-                w.WriteLine("; =============================================================================");
-                w.WriteLine("; User-added entries are merged with built-in defaults at scan time.");
-                w.WriteLine("; Built-in defaults are shown as comments for reference only.");
-                w.WriteLine("; Format: one value per line.  Lines starting with ; or # are ignored.");
-                w.WriteLine("; Section names are case-insensitive (ExtraPorts = EXTRA_PORTS = extra_ports).");
-                w.WriteLine("; =============================================================================");
-                w.WriteLine();
+                // Read the existing file and find the USER block marker.
+                var lines = File.ReadAllLines(SettingsPath).ToList();
+                int markerLine = lines.FindIndex(l => l.Contains(UserBlockMarker));
 
-                w.WriteLine("[ExtraPorts]");
-                w.WriteLine("; Built-in: 1688");
-                foreach (var p in ExtraPorts) w.WriteLine(p);
-                w.WriteLine();
+                // Build the new user block content
+                using var ms = new System.IO.MemoryStream();
+                using var writer = new StreamWriter(ms, System.Text.Encoding.UTF8, 4096, true);
+                WriteUserBlock(writer);
+                writer.Flush();
+                ms.Position = 0;
+                var newUserBlock = new StreamReader(ms).ReadToEnd();
 
-                w.WriteLine("[ExtraServices]");
-                w.WriteLine("; Built-in: KMSpico, KMService, WinKSO, KMSELDI, KMS_VL_ALL, KMSAuto, AutoKMS, KMSSS, KMSEmulator, vlmcsd");
-                foreach (var s in ExtraServices) w.WriteLine(s);
-                w.WriteLine();
-
-                w.WriteLine("[ExtraProcesses]");
-                w.WriteLine("; Built-in: KMSpico, KMSELDI, AutoKMS, KMSAuto, KMSguard, WinKSO, KMService, vlmcsd, AAct, KMS_VL_ALL");
-                foreach (var s in ExtraProcesses) w.WriteLine(s);
-                w.WriteLine();
-
-                w.WriteLine("[ExtraTaskKeywords]");
-                w.WriteLine("; Built-in: AutoKMS, KMSAuto, KMS_VL_ALL, KMSpico, KMSSS, KMSEmulator, KMService, WinKSO, vlmcsd");
-                foreach (var s in ExtraTaskKeywords) w.WriteLine(s);
-                w.WriteLine();
-
-                w.WriteLine("[ExtraFilePaths]");
-                w.WriteLine("; Built-in: %ProgramFiles%\\KMSpico, %SystemRoot%\\System32\\KMSELDI.exe, %ProgramFiles%\\AAct (and more)");
-                foreach (var s in ExtraFilePaths) w.WriteLine(s);
-                w.WriteLine();
-
-                w.WriteLine("[KmsPiracyDomains]");
-                w.WriteLine("; Built-in piracy domains are always active (listed as comments for reference).");
-                w.WriteLine("; To add a new domain, add it as an uncommented line below.");
-                w.WriteLine("; To request a domain be added to the built-in list, open a GitHub issue:");
-                w.WriteLine(";   https://github.com/ardennguyen/WinLic/issues");
-                w.WriteLine("; Built-in: msguides, kms.loli, digiboy.ir, 0t.ng, kms.chinancce, kmscloud");
-                foreach (var s in ExtraKmsPiracyDomains) w.WriteLine(s);
+                if (markerLine >= 0)
+                {
+                    // Preserve default block up to (and including) the marker, replace user block
+                    var defaultPart = string.Join(Environment.NewLine, lines.Take(markerLine + 1));
+                    File.WriteAllText(SettingsPath,
+                        defaultPart + Environment.NewLine + Environment.NewLine + newUserBlock);
+                }
+                else
+                {
+                    // No marker found — append user block
+                    File.AppendAllText(SettingsPath, Environment.NewLine + newUserBlock);
+                }
             }
-            catch { /* ignore write failures (e.g. read-only location) */ }
+            catch { /* ignore write failures */ }
         }
+
+        private static void WriteUserBlock(StreamWriter w)
+        {
+            w.WriteLine();
+            w.WriteLine("[UserGvlkKeys]");
+            w.WriteLine("; Add custom GVLK/suspicious keys here: FULL-KEY = Description");
+            foreach (var s in UserGvlkSuffixes)
+                w.WriteLine("; (stored suffix) " + s);
+            w.WriteLine();
+
+            w.WriteLine("[UserKmsPiracyDomains]");
+            w.WriteLine("; Add your own KMS piracy hostnames here");
+            foreach (var s in ExtraKmsPiracyDomains) w.WriteLine(s);
+            w.WriteLine();
+
+            w.WriteLine("[ExtraPorts]");
+            w.WriteLine("; Additional TCP ports to probe on localhost");
+            foreach (var p in ExtraPorts) w.WriteLine(p);
+            w.WriteLine();
+
+            w.WriteLine("[ExtraServices]");
+            foreach (var s in ExtraServices) w.WriteLine(s);
+            w.WriteLine();
+
+            w.WriteLine("[ExtraTaskKeywords]");
+            foreach (var s in ExtraTaskKeywords) w.WriteLine(s);
+            w.WriteLine();
+
+            w.WriteLine("[ExtraProcesses]");
+            foreach (var s in ExtraProcesses) w.WriteLine(s);
+            w.WriteLine();
+
+            w.WriteLine("[ExtraFilePaths]");
+            foreach (var s in ExtraFilePaths) w.WriteLine(s);
+        }
+
+        // ── Auto-update ───────────────────────────────────────────────────────
+        /// <summary>
+        /// Downloads the latest default settings block from GitHub and replaces
+        /// the DEFAULT block in settings.ini while preserving the USER block.
+        /// </summary>
+        /// <returns>True on success, false on network/IO error.</returns>
+        public static async Task<bool> UpdateDefaultsAsync()
+        {
+            try
+            {
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+                http.DefaultRequestHeaders.Add("User-Agent", "WinLicApp/1.0");
+                var downloaded = await http.GetStringAsync(DefaultsUrl);
+
+                string userBlock = "";
+                if (File.Exists(SettingsPath))
+                {
+                    var existing = File.ReadAllLines(SettingsPath);
+                    int markerLine = Array.FindIndex(existing, l => l.Contains(UserBlockMarker));
+                    if (markerLine >= 0)
+                        userBlock = string.Join(Environment.NewLine,
+                            existing.Skip(markerLine));
+                }
+
+                // Build the timestamp comment
+                var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm UTC");
+                // Inject timestamp into downloaded content
+                var updatedDefault = downloaded.Replace(
+                    "Last-Updated:",
+                    $"Last-Updated: {timestamp}  ;");
+
+                var combined = updatedDefault.TrimEnd()
+                    + Environment.NewLine + Environment.NewLine
+                    + "# " + new string('═', 73) + Environment.NewLine
+                    + "# ║  USER BLOCK  --  Edit freely. NEVER overwritten by \"Update defaults\".    ║" + Environment.NewLine
+                    + "# " + new string('═', 73) + Environment.NewLine
+                    + Environment.NewLine
+                    + (string.IsNullOrWhiteSpace(userBlock) ? GetDefaultUserBlock() : userBlock);
+
+                File.WriteAllText(SettingsPath, combined);
+                Load(); // Reload after update
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string GetDefaultUserBlock() =>
+            @"[UserGvlkKeys]
+; Add custom GVLK/suspicious keys here: FULL-KEY = Description
+
+[UserKmsPiracyDomains]
+; Add your own KMS piracy hostnames here
+
+[ExtraPorts]
+; Additional TCP ports to probe on localhost
+
+[ExtraServices]
+; Additional service name keywords
+
+[ExtraTaskKeywords]
+; Additional scheduled task keywords
+
+[ExtraProcesses]
+; Additional process name keywords
+
+[ExtraFilePaths]
+; Additional file paths to check
+";
 
         public static string SettingsFilePath => SettingsPath;
     }

@@ -77,11 +77,11 @@ function Read-IniSection {
 # ---- Audit scan lists (defaults + settings.ini extensions) ------------------
 $DEFAULT_PORTS    = @(1688)
 $DEFAULT_SERVICES = @('KMSpico','KMService','WinKSO','KMSELDI','KMS_VL_ALL',
-                       'KMSAuto','AutoKMS','KMSSS','KMSEmulator','vlmcsd')
+                       'KMSAuto','AutoKMS','KMSSS','KMSEmulator','vlmcsd','Activation-Renewal')
 $DEFAULT_TASKS    = @('AutoKMS','KMSAuto','KMS_VL_ALL','KMSpico','KMSSS',
-                       'KMSEmulator','KMService','WinKSO','vlmcsd')
+                       'KMSEmulator','KMService','WinKSO','vlmcsd','Activation-Renewal')
 $DEFAULT_PROCS    = @('KMSpico','KMSELDI','AutoKMS','KMSAuto','KMSguard',
-                       'WinKSO','KMService','vlmcsd','AAct','KMS_VL_ALL')
+                       'WinKSO','KMService','vlmcsd','AAct','KMS_VL_ALL','gatherosstate')
 # Hardcoded safety net -- the full list lives in [KmsPiracyDomains] in settings.ini
 $DEFAULT_KMS_DOMAINS = @(
     'msguides',       # km8.msguides.com, kms2.msguides.com, kms9.msguides.com
@@ -99,14 +99,32 @@ function Get-ScanLists {
     $extraTasks   = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraTaskKeywords'
     $extraProcs   = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraProcesses'
     $extraFiles   = Read-IniSection -Path $SETTINGS_FILE -Section 'ExtraFilePaths'
-    $extraDomains = Read-IniSection -Path $SETTINGS_FILE -Section 'KmsPiracyDomains'
+    $extraDomains = @(
+        (Read-IniSection -Path $SETTINGS_FILE -Section 'KmsPiracyDomains') +
+        (Read-IniSection -Path $SETTINGS_FILE -Section 'UserKmsPiracyDomains')
+    ) | Where-Object { $_ }
+
+    # Load GVLK keys from both [GvlkKeys] and [UserGvlkKeys]
+    # Extract last 5 chars of each key for PartialProductKey matching
+    $gvlkSuffixes = @(
+        (Read-IniSection -Path $SETTINGS_FILE -Section 'GvlkKeys') +
+        (Read-IniSection -Path $SETTINGS_FILE -Section 'UserGvlkKeys')
+    ) | Where-Object { $_ } | ForEach-Object {
+        # Handle both  "W269N-WFGWX-YVC9B-4J6C9-T83GX = Windows 11/10 Pro"
+        # and bare key forms
+        $keyPart = if ($_ -match '=') { ($_ -split '=')[0].Trim() } else { $_.Trim() }
+        $alnum   = $keyPart -replace '[^A-Za-z0-9]',''
+        if ($alnum.Length -ge 5) { $alnum.Substring($alnum.Length - 5).ToUpper() }
+    } | Where-Object { $_ } | Sort-Object -Unique
+
     return @{
-        Ports      = ($DEFAULT_PORTS    + $extraPorts)   | Sort-Object -Unique
-        Services   = ($DEFAULT_SERVICES + $extraSvc)     | Sort-Object -Unique
-        Tasks      = ($DEFAULT_TASKS    + $extraTasks)   | Sort-Object -Unique
-        Processes  = ($DEFAULT_PROCS    + $extraProcs)   | Sort-Object -Unique
-        ExtraFiles = $extraFiles
-        KmsDomains = ($DEFAULT_KMS_DOMAINS + $extraDomains) | Sort-Object -Unique
+        Ports       = ($DEFAULT_PORTS    + $extraPorts)   | Sort-Object -Unique
+        Services    = ($DEFAULT_SERVICES + $extraSvc)     | Sort-Object -Unique
+        Tasks       = ($DEFAULT_TASKS    + $extraTasks)   | Sort-Object -Unique
+        Processes   = ($DEFAULT_PROCS    + $extraProcs)   | Sort-Object -Unique
+        ExtraFiles  = $extraFiles
+        KmsDomains  = ($DEFAULT_KMS_DOMAINS + $extraDomains) | Sort-Object -Unique
+        GvlkSuffixes = $gvlkSuffixes
     }
 }
 
@@ -235,6 +253,7 @@ function Show-Menu {
     Write-Host "  5 -- Uninstall License Key              [!]"   -ForegroundColor Red
     Write-Host "  6 -- Reset Activation (Rearm)           [!]"   -ForegroundColor Red
     Write-Host "  7 -- 3rd Party Activation Audit"               -ForegroundColor White
+    Write-Host "  U -- Update Scan Defaults from GitHub"          -ForegroundColor Cyan
     Write-Host "  Q -- Quit"                                     -ForegroundColor DarkGray
     Write-Blank
     Write-Host "  [!] These options make REAL changes to your Windows license." -ForegroundColor DarkRed
@@ -739,9 +758,12 @@ function Invoke-ActivationAudit {
     Write-Info "(1) KMS server name / registry  ->  detects LOCAL emulators (KMSpico, vlmcsd) AND CLOUD piracy KMS services"
     Write-Info "(2) Localhost port probe         ->  confirms a live local KMS listener is running"
     Write-Info "(3) System services              ->  residual activation services that survive reboots"
-    Write-Info "(4) Scheduled tasks              ->  periodic re-activation tasks (AutoKMS, KMSAuto...)"
-    Write-Info "(5) File / folder paths          ->  installation leftovers from common tools"
+    Write-Info "(4) Scheduled tasks              ->  periodic re-activation tasks (AutoKMS, KMSAuto, Activation-Renewal...)"
+    Write-Info "(5) File / folder paths          ->  installation leftovers + KMS38 GenuineTicket + MAS renewal artifacts"
     Write-Info "(6) Running processes            ->  active activation tool processes at scan time"
+    Write-Info "(7) GVLK key + permanent act.    ->  detects TSforge / KMS38 / HWID piracy patterns"
+    Write-Info "(8) Activation expiry anomaly    ->  year 2038 (KMS38), 2100+ (TSforge KMS4k), ~180d (Online KMS)"
+    Write-Info "(9) SPP store timestamp          ->  LOW CONFIDENCE indicator of TSforge data.dat modification"
     Write-Blank
     Write-Host "  KNOWN LIMITATIONS -- CANNOT DETECT" -ForegroundColor DarkYellow
     Write-Info "* HWID tools (MAS HWID, HWIDGEN): create a genuine Digital Entitlement via MS API"
@@ -780,6 +802,7 @@ function Invoke-ActivationAudit {
 
         # -- Classify the configured KMS host --
         $isLocal       = $kmsHost -match '^(127\.|localhost|::1|0\.0\.0\.0)'
+        $isBogusPlaceholder = $kmsHost -eq '10.0.0.10'
         $isMsOfficial  = $kmsHost -match '\.(microsoft\.com|windows\.net)$'
         $isPrivateIp   = $kmsHost -match '^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)'
         $isPrivateHost = (-not $isPrivateIp) -and (
@@ -792,6 +815,12 @@ function Invoke-ActivationAudit {
         if ($isLocal) {
             Write-Fail "LOCAL KMS EMULATOR -- KMS server points to localhost/127.x.x.x!"
             Write-Fail "A fake KMS server (KMSpico, vlmcsd, KMSAuto) is running locally."
+            $criticalKms = $true
+            $suspiciousCount++
+        } elseif ($isBogusPlaceholder) {
+            Write-Fail "BOGUS KMS PLACEHOLDER DETECTED -- KMS server is 10.0.0.10"
+            Write-Fail "This is a non-routable IP used by MAS Online KMS (no renewal task installed)."
+            Write-Fail "It prevents Office activation banners but does NOT legitimately activate Windows."
             $criticalKms = $true
             $suspiciousCount++
         } elseif ($isKnownPiracy) {
@@ -822,6 +851,21 @@ function Invoke-ActivationAudit {
         }
     } else {
         Write-OK "No KMS server configured."
+    }
+
+    # 1f. Check Office KMS registry
+    $officeKmsHost = $null
+    try {
+        $officeKmsHost = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\OfficeSoftwareProtectionPlatform' `
+            -Name 'KeyManagementServiceName' -ErrorAction SilentlyContinue).KeyManagementServiceName
+    } catch {}
+    if ($officeKmsHost) {
+        $officeIsKnownPiracy = $lists.KmsDomains | Where-Object { $officeKmsHost -match [regex]::Escape($_) }
+        $officeIsExternal    = $officeKmsHost -notmatch '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|127\.|localhost)'
+        if ($officeIsKnownPiracy -or $officeIsExternal) {
+            Write-Warn "Office KMS server configured: $officeKmsHost (suspicious -- piracy domain or external host)"
+            $suspiciousCount++
+        }
     }
 
     Write-Blank
@@ -936,7 +980,12 @@ function Invoke-ActivationAudit {
         @{ P = (Join-Path $win  "KMS");                  T = "KMS tools folder" },
         @{ P = (Join-Path $sys  "SppExtComObj.exe.bak"); T = "Patched SPP backup" },
         @{ P = (Join-Path $pf   "AAct");                 T = "AAct" },
-        @{ P = (Join-Path $pf86 "AAct");                 T = "AAct" }
+        @{ P = (Join-Path $pf86 "AAct");                 T = "AAct" },
+        # KMS38 / ClipSVC artifact
+        @{ P = "C:\ProgramData\Microsoft\Windows\ClipSVC\GenuineTicket\GenuineTicket.xml"; T = "KMS38 GenuineTicket" },
+        # MAS Online KMS renewal task artifacts
+        @{ P = "C:\Program Files\Activation-Renewal\Activation_task.cmd"; T = "MAS Online KMS renewal task" },
+        @{ P = "C:\Program Files\Activation-Renewal\Info.txt";            T = "MAS Online KMS renewal info" }
     )
 
     $allPaths = $builtIn
@@ -984,6 +1033,151 @@ function Invoke-ActivationAudit {
     }
 
     Write-Blank
+    Write-Sep
+
+    # (7) GVLK + Activation Channel check ----------------------------------------
+    Write-Step "(7) Checking activation channel and installed key type (WMI)..."
+    Write-Info "GVLK (Generic Volume License Keys) combined with permanent activation"
+    Write-Info "(no KMS renewal countdown) strongly indicates TSforge, KMS38, or HWID piracy."
+    Write-Info "Legitimate enterprise KMS clients always show an active 180-day countdown."
+    if ($lists.GvlkSuffixes.Count -gt 0) {
+        Write-Info "GVLK suffixes loaded from settings.ini: $($lists.GvlkSuffixes.Count)"
+    } else {
+        Write-Info "No GVLK keys in settings.ini -- only generic DE placeholder keys checked."
+    }
+    Write-Blank
+
+    $wmiLicStatus = $null
+    try {
+        $wmiLicStatus = Get-CimInstance -ClassName Win32_SoftwareLicensingProduct |
+            Where-Object { $_.PartialProductKey -and $_.ApplicationID -eq '55c92734-d682-4d71-983e-d6ec3f16059f' } |
+            Select-Object -First 1
+    } catch {}
+
+    if ($wmiLicStatus) {
+        $ppk        = $wmiLicStatus.PartialProductKey
+        $licStatus  = $wmiLicStatus.LicenseStatus
+        $graceMins  = $wmiLicStatus.GracePeriodRemaining
+        $desc       = $wmiLicStatus.Description
+
+        $isLicensed  = $licStatus -eq 1
+        $isPermanent = ($graceMins -eq 0 -or $graceMins -eq $null) -and $isLicensed
+
+        # Check GVLK suffix
+        $isGvlk     = $false
+        if ($lists.GvlkSuffixes.Count -gt 0) {
+            $isGvlk = $lists.GvlkSuffixes -contains $ppk.ToUpper()
+        }
+        # Also check against built-in genericKeys table
+        if (-not $isGvlk -and $genericKeys.ContainsKey($ppk)) {
+            $isGvlk = $true
+        }
+
+        # 7a. Phone activation anomaly (TSforge ZeroCID indicator)
+        if ($desc -match 'phone' -and $isLicensed) {
+            Write-Fail "ANOMALOUS PHONE ACTIVATION DETECTED!"
+            Write-Fail "  Windows reports Phone activation with no record of a phone activation flow."
+            Write-Fail "  This is a characteristic indicator of TSforge ZeroCID sub-method."
+            $criticalKms = $true
+            $suspiciousCount++
+        }
+
+        # 7b. GVLK + permanent = likely piracy
+        if ($isGvlk -and $isPermanent) {
+            Write-Fail "LIKELY PIRACY -- GVLK/placeholder key detected with PERMANENT activation!"
+            Write-Fail "  PartialProductKey: $ppk"
+            Write-Fail "  Legitimate enterprise KMS clients always have a 180-day renewal countdown."
+            Write-Fail "  This pattern matches TSforge, KMS38, or HWID activation via MAS."
+            $criticalKms = $true
+            $suspiciousCount++
+        } elseif ($isGvlk -and -not $isPermanent) {
+            Write-OK  "GVLK key detected with active KMS renewal (grace: $graceMins min)."
+            Write-Info "Consistent with legitimate enterprise KMS activation. Verify the KMS server."
+        } else {
+            Write-OK  "Installed key (ends: $ppk) is NOT a known GVLK or placeholder key."
+        }
+    } else {
+        Write-Info "Could not retrieve WMI licensing data for channel check."
+    }
+
+    Write-Blank
+    Write-Sep
+
+    # (8) Activation expiry analysis ----------------------------------------------
+    Write-Step "(8) Analyzing activation expiry date (WMI)..."
+    Write-Info "Unusual expiry dates are strong indicators of specific piracy methods:"
+    Write-Info "  * Year ~2038 = KMS38 (32-bit timestamp max)"
+    Write-Info "  * Year 2100+ = TSforge KMS4k (4000+ year forged KMS lease)"
+    Write-Info "  * ~180 days  = Online KMS renewal cycle"
+    Write-Blank
+
+    if ($wmiLicStatus) {
+        $graceMins2 = $wmiLicStatus.GracePeriodRemaining
+        $licStatus2 = $wmiLicStatus.LicenseStatus
+        if (($graceMins2 -eq 0 -or $graceMins2 -eq $null) -and $licStatus2 -eq 1) {
+            Write-OK "Windows reports permanent activation (no expiry countdown)."
+        } elseif ($graceMins2 -gt 0) {
+            $expiry = (Get-Date).AddMinutes($graceMins2)
+            $exYear = $expiry.Year
+            $daysLeft = ($expiry - (Get-Date)).TotalDays
+            Write-Data "Expiry date:" ($expiry.ToString('yyyy-MM-dd HH:mm'))
+            if ($exYear -ge 2100) {
+                Write-Fail "TSFORGE KMS4K DETECTED -- Expiry year $exYear (thousands of years in the future)!"
+                Write-Fail "TSforge forges a KMS lease directly into the SPP trusted store."
+                $criticalKms = $true
+                $suspiciousCount++
+            } elseif ($exYear -ge 2037) {
+                Write-Fail "KMS38 LEGACY ACTIVATION -- Expiry year $exYear (~2038-01-19 = max 32-bit timestamp)"
+                Write-Warn "KMS38 was patched in KB5068861 (Nov 2025) but pre-patched machines may still show this."
+                $criticalKms = $true
+                $suspiciousCount++
+            } elseif ($daysLeft -ge 165 -and $daysLeft -le 195) {
+                Write-Warn "ONLINE KMS 180-DAY CYCLE -- Expiry ~$([int]$daysLeft) days, consistent with Online KMS renewal."
+                Write-Warn "Combined with an external KMS server above, this strongly indicates MAS Online KMS."
+                $suspiciousCount++
+            } else {
+                Write-OK "Activation expiry date appears normal."
+            }
+        }
+    } else {
+        Write-Info "WMI licensing data not available for expiry analysis."
+    }
+
+    Write-Blank
+    Write-Sep
+
+    # (9) TSforge SPP store file timestamp (LOW CONFIDENCE) ------------------------
+    Write-Step "(9) Checking SPP trusted store file timestamp [LOW CONFIDENCE]..."
+    Write-Info "TSforge modifies the SPP trusted store (data.dat) directly."
+    Write-Info "A LastWriteTime not correlated with any Windows Update event is a LOW CONFIDENCE indicator."
+    Write-Info "Windows Update and legitimate troubleshooting can also modify this file."
+    Write-Blank
+
+    $datPath = "$env:SystemRoot\System32\spp\store\2.0\data.dat"
+    if (Test-Path $datPath) {
+        $datMod = (Get-Item $datPath).LastWriteTime
+        Write-Data "SPP store LastWriteTime:" ($datMod.ToString('yyyy-MM-dd HH:mm'))
+        # Check for nearby Windows Update event (Event ID 19)
+        $hasNearbyUpdate = $false
+        try {
+            $cutoff = $datMod.AddHours(-48)
+            $events = Get-EventLog -LogName System -Source 'Microsoft-Windows-WindowsUpdateClient' `
+                -Newest 200 -ErrorAction SilentlyContinue |
+                Where-Object { $_.EventID -eq 19 -and [Math]::Abs(($_.TimeWritten - $datMod).TotalHours) -lt 48 }
+            $hasNearbyUpdate = ($events -ne $null -and @($events).Count -gt 0)
+        } catch {}
+        if ($hasNearbyUpdate) {
+            Write-OK "SPP store timestamp correlates with a Windows Update event -- no anomaly."
+        } else {
+            Write-Warn "[LOW CONFIDENCE] SPP store was modified with no correlated Windows Update event."
+            Write-Warn "  This MAY indicate TSforge activation. Use 'slmgr /dlv' for further investigation."
+            $suspiciousCount++
+        }
+    } else {
+        Write-Info "SPP store file not found at expected path -- cannot check."
+    }
+
+    Write-Blank
     Write-Sep2
 
     # Results -----------------------------------------------------------------
@@ -992,11 +1186,12 @@ function Invoke-ActivationAudit {
     Write-Blank
 
     if ($criticalKms) {
-        Write-Fail "CRITICAL: Local KMS emulator confirmed."
-        Write-Fail "          Windows is almost certainly activated by a 3rd-party KMS tool."
+        Write-Fail "CRITICAL: Piracy KMS activation detected (local emulator, bogus IP, or unauthorized cloud service)."
+        Write-Fail "          Windows is almost certainly activated by an unauthorized 3rd-party method."
+        Write-Fail "          Total indicators flagged: $suspiciousCount"
     } elseif ($suspiciousCount -gt 0) {
         Write-Warn "One or more suspicious indicators found -- review the results above."
-        Write-Warn "Total indicators: $suspiciousCount"
+        Write-Warn "Total indicators flagged: $suspiciousCount"
     } else {
         Write-OK  "No 3rd-party activation indicators detected -- system appears clean."
     }
@@ -1005,6 +1200,121 @@ function Invoke-ActivationAudit {
         Write-Blank
         Write-Info "Custom scan lists loaded from: $SETTINGS_FILE"
     }
+    Write-Blank
+
+    # Legal notice (always shown)
+    Write-Sep
+    Write-Host "  ACTIVATION AUDIT -- LEGAL NOTICE" -ForegroundColor Yellow
+    Write-Info "Using Windows without a genuine license purchased from Microsoft or an"
+    Write-Info "authorized reseller violates Microsoft's Terms of Service (EULA SS4)."
+    Write-Info "Enterprise / OEM users: verify licensing with your IT department or OEM."
+    Write-Info "Check your genuine license status: https://aka.ms/MyAccount"
+    Write-Blank
+    Write-Info "SCAN LIMITATIONS: HWID via MAS creates a real MS digital license (undetectable)."
+    Write-Info "Any tool removed after use leaves no trace. Corporate KMS may trigger GVLK warnings."
+    Write-Blank
+}
+
+# =============================================================================
+# OPTION U -- Update scan defaults from GitHub
+# =============================================================================
+function Update-DefaultSettings {
+    Write-Blank
+    Write-Host "  UPDATE SCAN DEFAULTS" -ForegroundColor Magenta
+    Write-Sep
+    Write-Info "Downloads the latest settings.default.ini from the WinLic GitHub repository."
+    Write-Info "Your user-added entries (ExtraPorts, ExtraServices, etc.) are preserved."
+    Write-Info "Source: https://raw.githubusercontent.com/ardennguyen/WinLic/main/WinLicPS/settings.default.ini"
+    Write-Sep
+    Write-Blank
+
+    # Check internet first
+    $online = $false
+    try {
+        $null = [System.Net.Dns]::GetHostEntry("raw.githubusercontent.com")
+        $online = $true
+    } catch {}
+
+    if (-not $online) {
+        Write-Fail "No internet connection detected -- cannot reach GitHub."
+        Write-Fail "Please check your network and try again."
+        Write-Blank
+        return
+    }
+
+    Write-Step "Downloading latest defaults from GitHub..."
+    $url      = "https://raw.githubusercontent.com/ardennguyen/WinLic/main/WinLicPS/settings.default.ini"
+    $tmpPath  = Join-Path $SCRIPT_DIR "settings.default.ini.tmp"
+
+    try {
+        $wc = New-Object System.Net.WebClient
+        $wc.Headers.Add("User-Agent", "WinLicManager/1.0")
+        $downloaded = $wc.DownloadString($url)
+    } catch {
+        Write-Fail "Download failed: $_"
+        Write-Blank
+        return
+    }
+
+    # Inject timestamp
+    $ts          = (Get-Date -Format "yyyy-MM-dd HH:mm UTC")
+    $downloaded  = $downloaded -replace 'Last-Updated:', "Last-Updated: $ts  ;"
+
+    # Preserve user block from existing settings.ini
+    $userBlock = ""
+    if (Test-Path $SETTINGS_FILE) {
+        $existing = Get-Content $SETTINGS_FILE
+        $markerIdx = ($existing | Select-String 'USER BLOCK' | Select-Object -First 1).LineNumber
+        if ($markerIdx -gt 0) {
+            $userBlock = ($existing | Select-Object -Skip ($markerIdx - 1)) -join "`r`n"
+        }
+    }
+
+    # Build combined file
+    $separator = @(
+        "",
+        "# " + ("=" * 73),
+        "# ||  USER BLOCK  --  Edit freely. NEVER overwritten by 'Update defaults'.  ||",
+        "# " + ("=" * 73),
+        ""
+    ) -join "`r`n"
+
+    if ($userBlock) {
+        $combined = $downloaded.TrimEnd() + "`r`n`r`n" + $userBlock
+    } else {
+        $combined = $downloaded.TrimEnd() + "`r`n" + $separator + @"
+[UserGvlkKeys]
+; Add custom GVLK/suspicious keys here: FULL-KEY = Description
+
+[UserKmsPiracyDomains]
+; Add your own KMS piracy hostnames here
+
+[ExtraPorts]
+; Additional TCP ports to probe on localhost
+
+[ExtraServices]
+; Additional service name keywords
+
+[ExtraTaskKeywords]
+; Additional scheduled task keywords
+
+[ExtraProcesses]
+; Additional process name keywords
+
+[ExtraFilePaths]
+; Additional file paths to check
+"@
+    }
+
+    try {
+        [System.IO.File]::WriteAllText($SETTINGS_FILE, $combined, [System.Text.Encoding]::UTF8)
+        Write-OK  "settings.ini updated successfully!"
+        Write-Data "File:" $SETTINGS_FILE
+        Write-Data "Timestamp:" $ts
+    } catch {
+        Write-Fail "Could not write settings.ini: $_"
+    }
+
     Write-Blank
 }
 
@@ -1020,7 +1330,7 @@ do {
         $script:firstLoad = $false
     }
     Show-Menu
-    $choice = (Read-Host "  Select option (1-7, Q to quit)").Trim().ToUpper()
+    $choice = (Read-Host "  Select option (1-7, U, Q to quit)").Trim().ToUpper()
     Write-Blank
 
     switch ($choice) {
@@ -1030,10 +1340,11 @@ do {
         "4" { Test-ProductKey;         Read-Host "  Press Enter to return to menu..." }
         "5" { Remove-License;          Read-Host "  Press Enter to return to menu..." }
         "6" { Reset-Activation;        Read-Host "  Press Enter to return to menu..." }
-        "7" { Invoke-ActivationAudit;  Read-Host "  Press Enter to return to menu..." }
+        "7" { Invoke-ActivationAudit;    Read-Host "  Press Enter to return to menu..." }
+        "U" { Update-DefaultSettings;    Read-Host "  Press Enter to return to menu..." }
         "Q" { Write-OK "Goodbye!"; break }
         default {
-            Write-Warn "Invalid option -- choose 1-7 or Q."
+            Write-Warn "Invalid option -- choose 1-7, U, or Q."
             Start-Sleep -Seconds 1
         }
     }

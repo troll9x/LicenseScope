@@ -35,8 +35,9 @@ namespace WinLicApp
 
             TxtFilesNote.Text  = L.Get("SD_FilesNote");
             TxtSaveNote.Text   = L.Get("SD_SaveNote");
-            BtnSave.Content    = L.Get("SD_Save");
-            BtnCancel.Content  = L.Get("Dialog_Cancel");
+            BtnSave.Content           = L.Get("SD_Save");
+            BtnCancel.Content         = L.Get("Dialog_Cancel");
+            BtnUpdateDefaults.Content = L.Get("P7_UpdateDefaults");
         }
 
         // ── Populate with current values ──────────────────────────────────────────
@@ -91,6 +92,31 @@ namespace WinLicApp
         {
             DialogResult = false;
             Close();
+        }
+
+        private async void BtnUpdateDefaults_Click(object sender, RoutedEventArgs e)
+        {
+            BtnUpdateDefaults.IsEnabled = false;
+            BtnUpdateDefaults.Content   = L.Get("P7_UpdateChecking");
+
+            bool ok = await AppSettings.UpdateDefaultsAsync();
+
+            if (ok)
+            {
+                PopulateFields();
+                TxtSaveNote.Text = L.Get("P7_UpdateSuccess");
+                BtnUpdateDefaults.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#4ade80"));
+            }
+            else
+            {
+                TxtSaveNote.Text = L.Get("P7_UpdateFail");
+                BtnUpdateDefaults.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#f87171"));
+            }
+
+            BtnUpdateDefaults.Content   = L.Get("P7_UpdateDefaults");
+            BtnUpdateDefaults.IsEnabled = true;
         }
     }
 }
