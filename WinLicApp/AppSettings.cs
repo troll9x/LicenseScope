@@ -68,8 +68,8 @@ namespace WinLicApp
             "Activation-Renewal"
         };
 
-        // Minimal hardcoded piracy domain safety net. The full authoritative
-        // list comes from [KmsPiracyDomains] in settings.ini.
+        // Hardcoded KMS piracy domains — mirrors [KmsPiracyDomains] in settings.default.ini.
+        // Keep in sync with settings.default.ini when updating.
         public static readonly string[] DefaultKmsPiracyDomains =
         {
             "msguides",       // km8.msguides.com, kms2.msguides.com, kms9.msguides.com
@@ -78,7 +78,57 @@ namespace WinLicApp
             "0t.ng",
             "kms.chinancce",
             "kmscloud",
+            "kms.cangshui",
+            "kms.ddns.net",
+            "e8.us.to",
+            "kms.mrxinwang",
+            "kms8.msguides",
+            "kms9.msguides",
+            "kms.xspace.in",
+            "skms.netnr",
         };
+
+        // Hardcoded GVLK suffix fallback — mirrors [GvlkKeys] in settings.default.ini.
+        // Last 5 chars of each key; matched against WMI PartialProductKey.
+        // Keep in sync with settings.default.ini when updating.
+        public static readonly HashSet<string> HardcodedGvlkSuffixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Windows 11 / 10 Semi-Annual Channel
+            "T83GX", // Pro
+            "GCQG9", // Pro N
+            "6Q84J", // Pro for Workstations
+            "6XYWF", // Pro for Workstations N
+            "J447Y", // Pro Education
+            "66QFC", // Pro Education N
+            "VCFB2", // Education (also Win11 Pro Education HWID placeholder)
+            "MDWWJ", // Education N
+            "2YT43", // Enterprise
+            "KHJW4", // Enterprise N
+            "4M68B", // Enterprise G
+            "T84FV", // Enterprise G N
+            // LTSC / IoT / LTSB
+            "J462D", // LTSC 2024 / Win10 LTSC 2021 / 2019
+            "7CG2H", // Enterprise N LTSC
+            "PDQGT", // IoT Enterprise LTSC 2024/2021
+            "QJ4BJ", // Enterprise LTSB 2016
+            "8B639", // Enterprise N LTSB 2016
+            "76DF9", // Enterprise LTSB 2015
+            "D69TJ", // Enterprise N LTSB 2015
+            // Windows 8.1
+            "9D6T9", // 8.1 Pro
+            "B4FXY", // 8.1 Pro N
+            "MKKG7", // 8.1 Enterprise
+            "JFFXW", // 8.1 Enterprise N
+            // HWID / DE placeholder keys
+            "3V66T", // Win 10/11 Pro
+            "8HVX7", // Win 10/11 Home
+            "H8Q99", // Win 10 Home
+            "WXCHW", // Home Single Language
+            "WGGBY", // Pro Education
+            "2YV77", // Pro for Workstations
+            "8DEC2", // Enterprise
+        };
+
 
         // ── Loaded from settings.ini DEFAULT block ─────────────────────────────
         /// <summary>Last-5-char suffixes from [GvlkKeys] in the default block.</summary>
@@ -138,10 +188,10 @@ namespace WinLicApp
             .Concat(ExtraTaskKeywords)
             .Distinct().ToArray();
 
-        /// <summary>All GVLK key suffixes (last 5 chars) from both default and user sections.</summary>
+        /// <summary>All GVLK key suffixes (last 5 chars) from hardcoded fallback + ini defaults + user additions.</summary>
         public static HashSet<string> AllGvlkSuffixes =>
             new HashSet<string>(
-                DefaultGvlkSuffixes.Concat(UserGvlkSuffixes),
+                HardcodedGvlkSuffixes.Concat(DefaultGvlkSuffixes).Concat(UserGvlkSuffixes),
                 StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Full piracy-domain list: hardcoded + ini defaults + user additions.</summary>

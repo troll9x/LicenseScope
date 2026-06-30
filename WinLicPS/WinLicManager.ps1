@@ -44,16 +44,43 @@ $slmgrPath      = Join-Path $env:SystemRoot "System32\slmgr.vbs"
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-# Known generic Digital Entitlement placeholder keys (matched by last 5 chars)
+# Known GVLK and HWID placeholder keys (last 5 chars of PartialProductKey)
+# Mirrors [GvlkKeys] in settings.default.ini. Keep in sync.
 $genericKeys = @{
-    "3V66T" = "Windows 10/11 Pro  (VK7JG-NPHTM-C97JM-9MPGT-3V66T)"
-    "3TTL4" = "Windows 10/11 Home  (YTMG3-N6KGA-8B33D-XXYF2-3TTL4)"
-    "WXCHW" = "Windows 10/11 Home Single Language  (4CPRK-NM3K3-X6XXQ-RXX86-WXCHW)"
-    "PR4Y7" = "Windows Pro Education  (8PTT6-RNW4C-X6V77-D23ST-PR4Y7)"
-    "2YV77" = "Windows Pro Workstations  (DXG7C-N36C4-C4HTG-X4T3X-2YV77)"
-    "8DEC2" = "Windows Enterprise  (XGVPP-NMH47-7TTHJ-W3FW7-8DEC2)"
-    "28UTV" = "Windows Enterprise  (NPPR9-FWDCX-D2C8J-H8P65-28UTV)"
-    "7CFBY" = "Windows Education  (YNMGQ-8RYV3-4PGQ3-C8XTP-7CFBY)"
+    # Windows 11 / 10 Semi-Annual Channel
+    "T83GX" = "Win 11/10 Pro"
+    "GCQG9" = "Win 11/10 Pro N"
+    "6Q84J" = "Win 11/10 Pro for Workstations"
+    "6XYWF" = "Win 11/10 Pro for Workstations N"
+    "J447Y" = "Win 11/10 Pro Education"
+    "66QFC" = "Win 11/10 Pro Education N"
+    "VCFB2" = "Win 11/10 Education / Pro Edu HWID"
+    "MDWWJ" = "Win 11/10 Education N"
+    "2YT43" = "Win 11/10 Enterprise"
+    "KHJW4" = "Win 11/10 Enterprise N"
+    "4M68B" = "Win 11/10 Enterprise G"
+    "T84FV" = "Win 11/10 Enterprise G N"
+    # LTSC / IoT / LTSB
+    "J462D" = "Win 11 LTSC 2024 / Win10 LTSC 2021/2019"
+    "7CG2H" = "Win 11/10 Enterprise N LTSC"
+    "PDQGT" = "Win IoT Enterprise LTSC 2024/2021"
+    "QJ4BJ" = "Win 10 Enterprise LTSB 2016"
+    "8B639" = "Win 10 Enterprise N LTSB 2016"
+    "76DF9" = "Win 10 Enterprise LTSB 2015"
+    "D69TJ" = "Win 10 Enterprise N LTSB 2015"
+    # Windows 8.1
+    "9D6T9" = "Windows 8.1 Pro"
+    "B4FXY" = "Windows 8.1 Pro N"
+    "MKKG7" = "Windows 8.1 Enterprise"
+    "JFFXW" = "Windows 8.1 Enterprise N"
+    # HWID / DE placeholder keys
+    "3V66T" = "Win 10/11 Pro (HWID placeholder)"
+    "8HVX7" = "Win 10/11 Home (HWID placeholder)"
+    "H8Q99" = "Win 10 Home (HWID placeholder)"
+    "WXCHW" = "Win 10/11 Home Single Language (HWID placeholder)"
+    "WGGBY" = "Win 10 Pro Education (HWID placeholder)"
+    "2YV77" = "Win 10 Pro for Workstations (HWID placeholder)"
+    "8DEC2" = "Win 10 Enterprise (HWID placeholder)"
 }
 
 # ---- settings.ini parser ----------------------------------------------------
@@ -82,14 +109,22 @@ $DEFAULT_TASKS    = @('AutoKMS','KMSAuto','KMS_VL_ALL','KMSpico','KMSSS',
                        'KMSEmulator','KMService','WinKSO','vlmcsd','Activation-Renewal')
 $DEFAULT_PROCS    = @('KMSpico','KMSELDI','AutoKMS','KMSAuto','KMSguard',
                        'WinKSO','KMService','vlmcsd','AAct','KMS_VL_ALL','gatherosstate')
-# Hardcoded safety net -- the full list lives in [KmsPiracyDomains] in settings.ini
+# Hardcoded KMS piracy domains -- mirrors [KmsPiracyDomains] in settings.default.ini
 $DEFAULT_KMS_DOMAINS = @(
     'msguides',       # km8.msguides.com, kms2.msguides.com, kms9.msguides.com
     'kms.loli',       # kms.loli.beer
     'digiboy.ir',
     '0t.ng',
     'kms.chinancce',
-    'kmscloud'
+    'kmscloud',
+    'kms.cangshui',
+    'kms.ddns.net',
+    'e8.us.to',
+    'kms.mrxinwang',
+    'kms8.msguides',
+    'kms9.msguides',
+    'kms.xspace.in',
+    'skms.netnr'
 )
 
 function Get-ScanLists {
