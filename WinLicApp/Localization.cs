@@ -187,6 +187,8 @@ namespace WinLicApp
                                       "Key Dự phòng trong Registry (lưu tại HKLM\\...\\SoftwareProtectionPlatform → BackupProductKeyDefault) không khớp với Key đang hoạt động.\n\nKey dự phòng này có thể là tàn dư từ lần kích hoạt hoặc nâng cấp ấn bản trước đó.\n\nXóa Key Dự phòng trong Registry?\n\nLưu ý: Trạng thái kích hoạt Windows hiện tại sẽ KHÔNG bị ảnh hưởng — chỉ xóa bản sao lưu."),
             ["O3_RegKeyRemoved"]   = ("Registry Backup Key removed.",
                                       "Đã xóa Key Dự phòng khỏi Registry."),
+            ["O3_NeedAdmin"]       = ("⚠ Run as Administrator to remove the stale backup key.",
+                                      "⚠ Chạy với quyền Administrator để xóa key dự phòng cũ."),
             ["O3_RemoveErr"]       = ("Could not remove key: ",         "Không thể xóa Key Bản Quyền: "),
             ["O3_RegReadErr"]      = ("Registry read error: ",          "Lỗi đọc Registry: "),
             ["O3_KeyMatch"]        = ("✔  Registry Backup Key matches the active product key.",
@@ -400,8 +402,8 @@ namespace WinLicApp
                                      "GIỚI HẠN QUÉT: HWID qua MAS tạo bản quyền MS thật (không phát hiện được). Công cụ bị gỡ sau khi dùng không để lại dấu vết. KMS doanh nghiệp có thể kích hoạt một số cảnh báo GVLK."),
 
             // ── Update defaults ────────────────────────────────────────────────
-            ["P7_UpdateDefaults"]  = ("Update scan defaults from GitHub",
-                                      "Cập nhật mặc định quét từ GitHub"),
+            ["P7_UpdateDefaults"]  = ("↻ Update Defaults",
+                                      "↻ Cập nhật mặc định"),
             ["P7_UpdateSuccess"]   = ("✔ Scan defaults updated successfully from GitHub repository.",
                                       "✔ Đã cập nhật mặc định quét thành công từ kho GitHub."),
             ["P7_UpdateFail"]      = ("⚠ Could not update defaults — check internet connection or try again later.",

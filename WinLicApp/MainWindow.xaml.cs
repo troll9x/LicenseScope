@@ -647,17 +647,24 @@ namespace WinLicApp
                     LogDiag(L.Get("O3_ActivePartial") + partialKey);
                     { var rp = regKey.Split('-'); LogDiag(L.Get("O3_BackupEnds") + rp[rp.Length - 1]); }
 
-                    if (_isAdmin && AskConfirm(L.Get("O3_ConfirmRemove")))
+                    if (_isAdmin)
                     {
-                        try
+                        if (AskConfirm(L.Get("O3_ConfirmRemove")))
                         {
-                            using var rk = Registry.LocalMachine.OpenSubKey(
-                                @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform",
-                                writable: true);
-                            rk?.DeleteValue("BackupProductKeyDefault", throwOnMissingValue: false);
-                            LogOk(L.Get("O3_RegKeyRemoved"));
+                            try
+                            {
+                                using var rk = Registry.LocalMachine.OpenSubKey(
+                                    @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform",
+                                    writable: true);
+                                rk?.DeleteValue("BackupProductKeyDefault", throwOnMissingValue: false);
+                                LogOk(L.Get("O3_RegKeyRemoved"));
+                            }
+                            catch (Exception ex) { LogError(L.Get("O3_RemoveErr") + ex.Message); }
                         }
-                        catch (Exception ex) { LogError(L.Get("O3_RemoveErr") + ex.Message); }
+                    }
+                    else
+                    {
+                        LogWarn(L.Get("O3_NeedAdmin"));
                     }
                 }
                 else { LogOk(L.Get("O3_KeyMatch")); }
