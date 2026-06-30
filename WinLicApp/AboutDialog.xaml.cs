@@ -70,7 +70,7 @@ namespace WinLicApp
                         TxtVerStatus.Foreground  = new System.Windows.Media.SolidColorBrush(
                             System.Windows.Media.Color.FromRgb(0x7c, 0x3a, 0xed));
 
-                        LinkNewVersion.NavigateUri = new Uri(ReleasesUrl);
+                        LinkNewVersion.NavigateUri = new Uri($"{ReleasesUrl}/tag/{latestTag}");
                         LinkNewVersion.Inlines.Clear();
                         LinkNewVersion.Inlines.Add(latestTag);
                         TxtVerLink.Visibility = Visibility.Visible;
