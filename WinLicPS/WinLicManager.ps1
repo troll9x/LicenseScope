@@ -39,7 +39,7 @@ $ErrorActionPreference = 'SilentlyContinue'
 $OutputEncoding           = [System.Text.Encoding]::UTF8
 
 # ---- Globals ----------------------------------------------------------------
-$SCRIPT_VERSION = "v1.3-beta3"
+$SCRIPT_VERSION = "v1.5"
 $SCRIPT_DIR     = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SETTINGS_FILE  = Join-Path $SCRIPT_DIR "settings.ini"
 $slmgrPath      = Join-Path $env:SystemRoot "System32\slmgr.vbs"
