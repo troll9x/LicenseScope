@@ -44,5 +44,5 @@ namespace WinLic.Scanners.Adobe.Tests
  class FakeConfig:IAdobeSharedDeviceConfigurationDetector{readonly bool x;public FakeConfig(bool v){x=v;}public AdobeSharedDeviceConfiguration Detect()=>new AdobeSharedDeviceConfiguration{Present=x,Count=x?2:0};}
  class FakeService:IAdobeServiceStatusProvider{readonly bool f,r;public FakeService(bool a,bool b){f=a;r=b;}public AdobeServiceStatus GetStatus()=>new AdobeServiceStatus{Found=f,Running=r};}
  class Clock:ISystemClock{public DateTimeOffset UtcNow=>DateTimeOffset.Parse("2027-01-01T00:00:00Z");}
- [TestClass]public class RegistrationTests{[TestMethod]public void ProductionOrderIsStable(){var ids=WinLic.Application.ProductionScannerFactory.CreateAll(new FakeRunner(),new Clock()).Select(x=>x.ScannerId).ToArray();CollectionAssert.AreEqual(new[]{"microsoft.windows","microsoft.office","autodesk.desktop","adobe.desktop"},ids);}}
+ [TestClass]public class RegistrationTests{[TestMethod]public void ProductionOrderIsStable(){var ids=WinLic.Application.ProductionScannerFactory.CreateAll(new FakeRunner(),new Clock()).Select(x=>x.ScannerId).ToArray();CollectionAssert.AreEqual(new[]{"microsoft.windows","microsoft.office","autodesk.desktop","adobe.desktop","trimble.sketchup"},ids);}}
 }

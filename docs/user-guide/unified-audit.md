@@ -1,5 +1,7 @@
 # Quét tất cả bản quyền
 
+SketchUp Desktop releases appear as separate rows. Session or Classic artifact presence never means licensed; subscription and Classic network states require external verification.
+
 Adobe applications are scanned as separate products. Installation or Adobe Genuine Service alone never means licensed; Named User normally requires online verification, while Shared Device expiry is used only from trusted official-toolkit evidence.
 
 Autodesk desktop products are detected read-only. Registration or a running service is not proof of entitlement; `NeedsOnlineVerification` and `Unknown` are expected conservative outcomes.

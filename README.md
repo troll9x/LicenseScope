@@ -2,6 +2,8 @@
 
 ## Unified read-only audit
 
+SketchUp Desktop versions are detected read-only. Subscription requires online verification, while Classic/network artifacts are treated as metadata only; WinLic never reads session contents, serials, authorization codes, or server addresses.
+
 Adobe desktop applications are included through a conservative read-only scanner. Named User installs require online verification; Shared Device/FRL status is only classified when an administrator-provided official toolkit record has an exact product match and trustworthy expiry.
 
 Autodesk desktop products are included through a conservative read-only scanner. Registration and service state are not proof of entitlement; no account API or license server is contacted.
