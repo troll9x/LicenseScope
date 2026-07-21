@@ -274,27 +274,32 @@
                                 Click="BtnClear_Click"/>
                     </StackPanel>
 
-                    <!-- Office 2019+ tab content -->
-                    <!-- Office 2019+ tab content -->
                     <StackPanel x:Name="OfficeTabContent" Visibility="Collapsed"
                                 Margin="10,12" HorizontalAlignment="Stretch">
-                        <Border Background="#fefce8" BorderBrush="#fde047" BorderThickness="1"
+                        <Border Background="#f5f3ff" BorderBrush="#c4b5fd" BorderThickness="1"
                                 CornerRadius="8" Padding="14,12"
                                 HorizontalAlignment="Stretch">
                             <StackPanel>
-                                <TextBlock Text="&#x1F6A7;"
+                                <TextBlock Text="&#x1F4CB;"
                                            FontSize="24" HorizontalAlignment="Center"
                                            Margin="0,0,0,6"/>
                                 <TextBlock x:Name="OfficeDevTitle"
                                            FontFamily="Segoe UI Semibold" FontSize="12"
-                                           Foreground="#713f12" HorizontalAlignment="Center"
+                                           Foreground="#4c1d95" HorizontalAlignment="Center"
                                            TextWrapping="Wrap" TextAlignment="Center"
                                            MaxWidth="180" Margin="0,0,0,6"/>
                                 <TextBlock x:Name="OfficeDevDesc"
                                            FontFamily="Segoe UI" FontSize="10"
-                                           Foreground="#92400e" HorizontalAlignment="Center"
+                                           Foreground="#6e6a8a" HorizontalAlignment="Center"
                                            TextWrapping="Wrap" TextAlignment="Center"
-                                           MaxWidth="180"/>
+                                           MaxWidth="180" Margin="0,0,0,10"/>
+                                <Button x:Name="BtnOfficeScan" Style="{StaticResource SideBtn}"
+                                        HorizontalContentAlignment="Center" Click="BtnOfficeScan_Click"/>
+                                <Button x:Name="BtnOfficeRescan" Style="{StaticResource UtilBtn}"
+                                        HorizontalContentAlignment="Center" Click="BtnOfficeScan_Click"/>
+                                <TextBlock x:Name="OfficeScanStatus" FontFamily="Segoe UI" FontSize="10"
+                                           Foreground="#6e6a8a" TextWrapping="Wrap" TextAlignment="Center"
+                                           Margin="0,8,0,0"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

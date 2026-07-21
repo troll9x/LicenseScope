@@ -206,6 +206,9 @@ namespace WinLicApp
             TabOffice.Content     = L.Get("TAB_OFFICE");
             OfficeDevTitle.Text   = L.Get("TAB_OFFICE_TITLE");
             OfficeDevDesc.Text    = L.Get("TAB_OFFICE_DESC");
+            BtnOfficeScan.Content = L.Get("OfficeScan_Button");
+            BtnOfficeRescan.Content = L.Get("OfficeScan_Rescan");
+            if (string.IsNullOrEmpty(OfficeScanStatus.Text)) OfficeScanStatus.Text = L.Get("OfficeScan_Ready");
         }
 
         private void TabWin_Click(object sender, RoutedEventArgs e)
@@ -580,6 +583,43 @@ namespace WinLicApp
             }
         }
 
+        private async void BtnOfficeScan_Click(object sender, RoutedEventArgs e)
+        {
+            BtnOfficeScan.IsEnabled = false;
+            BtnOfficeRescan.IsEnabled = false;
+            OfficeScanStatus.Text = L.Get("OfficeScan_Running");
+            LogAction("OfficeScan_Title");
+            try
+            {
+                var services = ApplicationCompositionRoot.CreateOfficeAudit();
+                var audit = await Task.Run(() => services.Orchestrator.RunAllAsync(services.Context, CancellationToken.None));
+                if (audit.Products.Count == 0)
+                {
+                    OfficeScanStatus.Text = L.Get("OfficeScan_None");
+                    LogWarn(L.Get("OfficeScan_None"));
+                }
+                else
+                {
+                    OfficeScanStatus.Text = string.Format(L.Get("OfficeScan_Found"), audit.Products.Count);
+                    foreach (var product in audit.Products)
+                    {
+                        LogData(L.Get("WinScan_Product"), product.ProductName);
+                        LogData(L.Get("WinScan_Version"), string.IsNullOrWhiteSpace(product.ProductVersion) ? "—" : product.ProductVersion);
+                        LogData(L.Get("WinScan_Status"), LocalizeStatus(product.Status));
+                        LogData(L.Get("WinScan_Type"), product.LicenseType);
+                        LogData(L.Get("WinScan_Key"), string.IsNullOrEmpty(product.PartialProductKey) ? "—" : product.PartialProductKey);
+                        LogData(L.Get("WinScan_Confidence"), product.Confidence.ToString());
+                        if (product.ExpirationDate.HasValue) LogData(L.Get("WinScan_Expiration"), product.ExpirationDate.Value.ToString("u"));
+                        foreach (var evidence in product.Evidence) LogDiag($"{evidence.Source} / {evidence.Name}: {evidence.Value}");
+                        foreach (var warning in product.Warnings) LogWarn(L.Get("WinScan_Warning") + ": " + warning);
+                    }
+                }
+            }
+            catch (OperationCanceledException) { OfficeScanStatus.Text = L.Get("WinScan_Cancelled"); LogWarn(L.Get("WinScan_Cancelled")); }
+            catch (Exception ex) { OfficeScanStatus.Text = L.Get("WinScan_Error"); LogError(L.Get("WinScan_Error") + ": " + ex.GetType().Name); }
+            finally { BtnOfficeScan.IsEnabled = true; BtnOfficeRescan.IsEnabled = true; }
+        }
+
         private static string LocalizeStatus(LicenseStatus status)
         {
             switch (status)
@@ -589,6 +629,8 @@ namespace WinLicApp
                 case LicenseStatus.GracePeriod: return L.Get("WinScan_Grace");
                 case LicenseStatus.Expired: return L.Get("WinScan_Expired");
                 case LicenseStatus.Trial: return L.Get("WinScan_Trial");
+                case LicenseStatus.NeedsSignIn: return L.Get("OfficeScan_NeedsSignIn");
+                case LicenseStatus.NeedsOnlineVerification: return L.Get("OfficeScan_NeedsOnline");
                 default: return L.Get("WinScan_Unknown");
             }
         }
