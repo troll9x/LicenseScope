@@ -185,6 +185,17 @@
                 <!-- Right: language toggle + About + Elevate -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
 
+                    <Button x:Name="BtnScanAll" Style="{StaticResource SideBtn}" Background="#6d28d9" Foreground="White"
+                            HorizontalContentAlignment="Center" Margin="0,0,6,0" Click="BtnScanAll_Click"/>
+                    <Button x:Name="BtnCancelAll" Style="{StaticResource UtilBtn}" HorizontalContentAlignment="Center"
+                            Margin="0,0,6,0" IsEnabled="False" Click="BtnCancelAll_Click"/>
+                    <Button x:Name="BtnExportJson" Content="JSON" Style="{StaticResource UtilBtn}" Margin="0,0,3,0" Click="BtnExportJson_Click"/>
+                    <Button x:Name="BtnExportCsv" Content="CSV" Style="{StaticResource UtilBtn}" Margin="0,0,3,0" Click="BtnExportCsv_Click"/>
+                    <Button x:Name="BtnExportHtml" Content="HTML" Style="{StaticResource UtilBtn}" Margin="0,0,6,0" Click="BtnExportHtml_Click"/>
+                    <ComboBox x:Name="UnifiedFilter" Width="92" Margin="0,0,6,0" SelectionChanged="UnifiedFilter_SelectionChanged">
+                        <ComboBoxItem Content="All" IsSelected="True"/><ComboBoxItem Content="Licensed"/><ComboBoxItem Content="Unlicensed"/><ComboBoxItem Content="Attention"/><ComboBoxItem Content="Unknown"/>
+                    </ComboBox>
+
                     <!-- EN | VI toggle -->
                     <Border BorderBrush="#c9c2e8" BorderThickness="1" CornerRadius="5"
                             Margin="0,0,8,0" VerticalAlignment="Center">
@@ -320,6 +331,27 @@
                     <FlowDocument x:Name="LogDocument"
                                   FontFamily="Cascadia Code, Consolas, Courier New"/>
                 </RichTextBox>
+
+                <Grid x:Name="UnifiedResultsPanel" Visibility="Collapsed" Background="White">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Margin="12,8">
+                        <TextBlock x:Name="UnifiedStatusText" FontFamily="Segoe UI Semibold" Foreground="#4c1d95"/>
+                        <ProgressBar x:Name="UnifiedProgress" Height="7" Minimum="0" Maximum="100" Margin="0,6,0,0"/>
+                    </StackPanel>
+                    <DataGrid x:Name="UnifiedResultsGrid" Grid.Row="1" Margin="12" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Vendor" Binding="{Binding Vendor}"/>
+                            <DataGridTextColumn Header="Product" Binding="{Binding ProductName}" Width="*"/>
+                            <DataGridTextColumn Header="Version" Binding="{Binding ProductVersion}"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}"/>
+                            <DataGridTextColumn Header="License type" Binding="{Binding LicenseType}"/>
+                            <DataGridTextColumn Header="Expiration" Binding="{Binding ExpirationDate}"/>
+                            <DataGridTextColumn Header="Confidence" Binding="{Binding Confidence}"/>
+                            <DataGridTextColumn Header="Scanner" Binding="{Binding ScannerId}"/>
+                            <DataGridTextColumn Header="Warnings" Binding="{Binding Warnings.Count}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
 
                 <!-- Key Entry Panel — collapsed until Option 2 activates it -->
                 <Border x:Name="KeyEntryPanel"

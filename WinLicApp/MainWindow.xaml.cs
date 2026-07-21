@@ -18,6 +18,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 using WinLic.Core.Models;
+using WinLic.Reporting;
 
 
 namespace WinLicApp
@@ -39,6 +40,9 @@ namespace WinLicApp
         private static readonly SolidColorBrush ColData   = Freeze("#1e1b4b");
         private static readonly SolidColorBrush ColLabel  = Freeze("#6b7280");
         private static readonly SolidColorBrush ColDE     = Freeze("#7c3aed");
+        private CancellationTokenSource? _unifiedCancellation;
+        private AuditResult? _unifiedResult;
+        private IReadOnlyList<LicenseResult> _unifiedDisplayProducts = Array.Empty<LicenseResult>();
 
         private static SolidColorBrush Freeze(string hex)
         {
@@ -209,7 +213,51 @@ namespace WinLicApp
             BtnOfficeScan.Content = L.Get("OfficeScan_Button");
             BtnOfficeRescan.Content = L.Get("OfficeScan_Rescan");
             if (string.IsNullOrEmpty(OfficeScanStatus.Text)) OfficeScanStatus.Text = L.Get("OfficeScan_Ready");
+            BtnScanAll.Content = L.Get("Unified_ScanAll");
+            BtnCancelAll.Content = L.Get("Unified_Cancel");
+            if (string.IsNullOrEmpty(UnifiedStatusText.Text)) UnifiedStatusText.Text = L.Get("Unified_Ready");
         }
+
+        private async void BtnScanAll_Click(object sender, RoutedEventArgs e)
+        {
+            _unifiedCancellation?.Dispose(); _unifiedCancellation = new CancellationTokenSource();
+            BtnScanAll.IsEnabled = false; BtnCancelAll.IsEnabled = true; UnifiedResultsPanel.Visibility = Visibility.Visible; UnifiedProgress.Value = 0;
+            var progress = new Progress<AuditProgress>(p => { UnifiedStatusText.Text = $"{p.ScannerId} — {p.CurrentIndex}/{p.TotalScannerCount}"; UnifiedProgress.Value = p.TotalScannerCount == 0 ? 0 : ((p.CurrentIndex - 1) * 100d / p.TotalScannerCount); });
+            try
+            {
+                var service = ApplicationCompositionRoot.CreateUnifiedAudit();
+                var result = await Task.Run(() => service.RunAllAsync(_unifiedCancellation.Token, progress));
+                _unifiedResult = result; _unifiedDisplayProducts = new AuditResultSanitizer().CreateReportSnapshot(result, new ReportWriteOptions()).Products; ApplyUnifiedFilter(); UnifiedProgress.Value = 100;
+                var summary = AuditSummary.From(result.Products); UnifiedStatusText.Text = result.WasCancelled ? L.Get("Unified_Cancelled") : string.Format(L.Get("Unified_Complete"), summary.Total, summary.Licensed, summary.Attention + summary.Unknown);
+            }
+            catch (OperationCanceledException) { UnifiedStatusText.Text = L.Get("Unified_Cancelled"); }
+            catch (Exception ex) { UnifiedStatusText.Text = L.Get("WinScan_Error") + ": " + ex.GetType().Name; }
+            finally { BtnScanAll.IsEnabled = true; BtnCancelAll.IsEnabled = false; }
+        }
+
+        private void BtnCancelAll_Click(object sender, RoutedEventArgs e) => _unifiedCancellation?.Cancel();
+        private void UnifiedFilter_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (IsLoaded) ApplyUnifiedFilter(); }
+        private void ApplyUnifiedFilter()
+        {
+            if (_unifiedResult == null) return; var name = (UnifiedFilter.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All"; IEnumerable<LicenseResult> values = _unifiedDisplayProducts;
+            if (name == "Licensed") values = values.Where(x => x.Status == LicenseStatus.Licensed);
+            else if (name == "Unlicensed") values = values.Where(x => x.Status == LicenseStatus.Unlicensed || x.Status == LicenseStatus.Expired);
+            else if (name == "Attention") values = values.Where(x => x.Status == LicenseStatus.Trial || x.Status == LicenseStatus.GracePeriod || x.Status == LicenseStatus.NeedsSignIn || x.Status == LicenseStatus.NeedsOnlineVerification);
+            else if (name == "Unknown") values = values.Where(x => x.Status == LicenseStatus.Unknown || x.Status == LicenseStatus.Error || x.Status == LicenseStatus.Unsupported);
+            UnifiedResultsGrid.ItemsSource = values.ToArray();
+        }
+
+        private async Task ExportUnifiedAsync(string format)
+        {
+            if (_unifiedResult == null) { MessageBox.Show(L.Get("Unified_NoExport")); return; }
+            var dialog = new SaveFileDialog { Filter = format.ToUpperInvariant() + " files|*." + format, FileName = "WinLic-Audit-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "." + format };
+            if (dialog.ShowDialog(this) != true) return; var sanitizer = new AuditResultSanitizer(); IAuditReportWriter writer = format == "json" ? (IAuditReportWriter)new JsonAuditReportWriter(sanitizer) : format == "csv" ? new CsvAuditReportWriter(sanitizer) : new HtmlAuditReportWriter(sanitizer);
+            var result = await writer.WriteAsync(_unifiedResult, new ReportWriteOptions { OutputPath = dialog.FileName, IncludeEvidence = true, IncludeWarnings = true, Overwrite = true }, CancellationToken.None);
+            MessageBox.Show(result.Success ? string.Format(L.Get("Unified_ReportSaved"), result.OutputPath) : string.Format(L.Get("Unified_ReportFailed"), result.ErrorMessage));
+        }
+        private async void BtnExportJson_Click(object sender, RoutedEventArgs e) => await ExportUnifiedAsync("json");
+        private async void BtnExportCsv_Click(object sender, RoutedEventArgs e) => await ExportUnifiedAsync("csv");
+        private async void BtnExportHtml_Click(object sender, RoutedEventArgs e) => await ExportUnifiedAsync("html");
 
         private void TabWin_Click(object sender, RoutedEventArgs e)
         {

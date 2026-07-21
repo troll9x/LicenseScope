@@ -4,6 +4,7 @@ using WinLic.Core.Runtime;
 using WinLic.Core.Services;
 using WinLic.Scanners.Windows;
 using WinLic.Scanners.Office;
+using WinLic.Application;
 
 namespace WinLicApp
 {
@@ -42,5 +43,7 @@ namespace WinLicApp
                 Context = new DefaultSystemContextProvider().GetCurrent()
             };
         }
+
+        public static IUnifiedAuditService CreateUnifiedAudit() => UnifiedAuditService.CreateProduction();
     }
 }

@@ -1,5 +1,15 @@
 # WinLic Manager
 
+## Unified read-only audit
+
+The current development branch provides one **Scan All** action for Windows and Microsoft Office/Project/Visio, plus the `WinLicAudit.Cli.exe audit --all` command. Sanitized reports can be exported as JSON, CSV, or standalone HTML.
+
+Audit mode is read-only: it does not activate products, install/remove keys, configure KMS, upload reports, or enable telemetry. Full keys, machine/account identifiers, and user paths are masked by default. This phase does not include an installer or claim verified Windows 7/8/ARM support.
+
+See [Unified audit](docs/user-guide/unified-audit.md), [CLI guide](docs/user-guide/cli.md), and [report privacy](docs/user-guide/reports.md).
+
+---
+
 <div align="center">
 
 ![WinLic Manager](WinLicApp/winlic_256.png)

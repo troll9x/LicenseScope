@@ -25,7 +25,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\src\WinLic.Application\WinLic.Application.csproj" />
     <ProjectReference Include="..\src\WinLic.Core\WinLic.Core.csproj" />
+    <ProjectReference Include="..\src\WinLic.Reporting\WinLic.Reporting.csproj" />
     <ProjectReference Include="..\src\WinLic.Scanners.Office\WinLic.Scanners.Office.csproj" />
     <ProjectReference Include="..\src\WinLic.Scanners.Windows\WinLic.Scanners.Windows.csproj" />
   </ItemGroup>
