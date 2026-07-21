@@ -1,5 +1,7 @@
 # WinLic Manager
 
+Compatibility is evidence-based: explicit net48 x86/x64 payloads, EOL technical targets for Windows 7 SP1/8.1, and a [verified matrix](docs/audit/phase-8-os-matrix.md). Windows 8.0 is unsupported. Windows on Arm emulation is experimental; native ARM64 is blocked pending net481 host/device testing. This is not a blanket Windows 7–11/ARM support claim.
+
 ## Unified read-only audit
 
 SketchUp Desktop versions are detected read-only. Subscription requires online verification, while Classic/network artifacts are treated as metadata only; WinLic never reads session contents, serials, authorization codes, or server addresses.

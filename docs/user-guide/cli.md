@@ -1,5 +1,7 @@
 # WinLic command-line guide
 
+`WinLicAudit.Cli.exe compatibility` and `compatibility --json` return sanitized OS/framework/native/process/execution-mode/payload/EOL data. Codes: 7 unsupported OS/architecture, 8 insufficient framework, 9 undetermined. Audit codes are unchanged.
+
 `audit --all` runs SketchUp fifth. The scanner launches no SketchUp process or browser and performs no Trimble/API or license-server connection.
 
 `audit --all` runs Adobe fourth after Autodesk. WinLic neither downloads the Adobe toolkit nor accepts an arbitrary toolkit path; a future installer/admin may provision it under the application-managed trusted tools directory.

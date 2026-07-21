@@ -1,5 +1,7 @@
 # Quét tất cả bản quyền
 
+GUI and CLI run a local read-only compatibility guard before audit. Unsupported combinations block; EOL/emulation warn. No framework download/install or compatibility-setting mutation occurs.
+
 SketchUp Desktop releases appear as separate rows. Session or Classic artifact presence never means licensed; subscription and Classic network states require external verification.
 
 Adobe applications are scanned as separate products. Installation or Adobe Genuine Service alone never means licensed; Named User normally requires online verification, while Shared Device expiry is used only from trusted official-toolkit evidence.

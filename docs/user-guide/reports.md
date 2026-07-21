@@ -1,5 +1,7 @@
 # Báo cáo WinLic
 
+Compatibility diagnostics contain OS version/build, framework and native/process/execution architecture only; machine and hardware identifiers remain excluded.
+
 SketchUp report evidence contains booleans only. It excludes session contents, email, Trimble ID, token, serial, authorization code, server identity, and raw user-profile paths.
 
 Adobe rows never contain raw account data, NpdId, LicenseId, ASNP, OperatingConfig contents, serials, tokens, or toolkit stdout. Only sanitized product, mode, expiry, configuration-count, and service evidence can be exported.

@@ -27,6 +27,7 @@ TestResults/
 
 # Local release artifacts (upload manually to GitHub Releases)
 releases/
+artifacts/
 
 # Agent-generated docs, work files, and rules (local only)
 agent/

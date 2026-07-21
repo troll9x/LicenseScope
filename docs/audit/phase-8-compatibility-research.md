@@ -1,0 +1,9 @@
+# Phase 8 compatibility research
+
+Accessed 2026-07-21. Microsoft sources: [.NET Framework requirements](https://learn.microsoft.com/dotnet/framework/get-started/system-requirements), [.NET 4.8](https://devblogs.microsoft.com/dotnet/announcing-the-net-framework-4-8/), [.NET 4.8.1 Arm64](https://devblogs.microsoft.com/dotnet/announcing-dotnet-framework-481/), [Windows on Arm](https://learn.microsoft.com/windows/arm/overview), [Arm emulation](https://learn.microsoft.com/windows/arm/apps-on-arm-x86-emulation), [release-key detection](https://learn.microsoft.com/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed), and [Windows 10 end of support](https://learn.microsoft.com/lifecycle/announcements/windows-10-end-of-support).
+
+`net48` is technically available for Windows 7 SP1, Windows 8.1, Windows 10 and Windows 11. Windows 7/8.1 and standard Windows 10 are EOL as of the evidence date; technical compatibility is not vendor support. Windows 8.0 is absent from the 4.8 client list: `UNSUPPORTED_BY_CURRENT_NET48_ARCHITECTURE`.
+
+Windows 10 on Arm emulates x86 only; Windows 11 on Arm emulates x86 and x64. .NET Framework 4.8.1 introduced native Arm64 for Windows 11+. This net48 solution has neither a net481 Arm64 host nor an Arm64 test device, so native ARM64 is blocked, not supported. AnyCPU remains development-only; explicit x86/x64 are release candidates with `Prefer32Bit=false`.
+
+Architecture probing prefers `IsWow64Process2`, then safely falls back to `IsWow64Process` and `GetNativeSystemInfo`. Framework detection reads the v4 Full `Release` key in both Registry views. WPF, WMI, service queries, Registry redirection, system paths, and vendor-helper bitness require real target testing. Undocumented ARM64 scanner/helper behavior is `NEEDS VERIFICATION`. No download, installer, telemetry, OS spoofing, or system mutation is permitted.
