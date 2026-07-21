@@ -1,5 +1,7 @@
 # Quét tất cả bản quyền
 
+Adobe applications are scanned as separate products. Installation or Adobe Genuine Service alone never means licensed; Named User normally requires online verification, while Shared Device expiry is used only from trusted official-toolkit evidence.
+
 Autodesk desktop products are detected read-only. Registration or a running service is not proof of entitlement; `NeedsOnlineVerification` and `Unknown` are expected conservative outcomes.
 
 Mở WinLic và nhấn **QUÉT TẤT CẢ**. Phần mềm kiểm tra Windows rồi Microsoft Office/Project/Visio bằng các nguồn chỉ đọc. Thanh tiến trình hiển thị scanner đang chạy; nút **Hủy** gửi yêu cầu dừng an toàn.

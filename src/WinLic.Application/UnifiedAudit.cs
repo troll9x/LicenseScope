@@ -9,6 +9,7 @@ using WinLic.Core.Runtime;
 using WinLic.Core.Services;
 using WinLic.Scanners.Office;
 using WinLic.Scanners.Autodesk;
+using WinLic.Scanners.Adobe;
 using WinLic.Scanners.Windows;
 
 namespace WinLic.Application
@@ -19,7 +20,7 @@ namespace WinLic.Application
     {
         public static IReadOnlyList<ILicenseScanner> CreateAll(IProcessRunner runner, ISystemClock clock)
         {
-            var scanners = new ILicenseScanner[] { WindowsScannerFactory.Create(runner, clock), OfficeScannerFactory.Create(runner), AutodeskScannerFactory.Create(runner) };
+            var scanners = new ILicenseScanner[] { WindowsScannerFactory.Create(runner, clock), OfficeScannerFactory.Create(runner), AutodeskScannerFactory.Create(runner), AdobeScannerFactory.Create(runner, clock) };
             ValidateUnique(scanners); return scanners;
         }
         public static void ValidateUnique(IEnumerable<ILicenseScanner> scanners)

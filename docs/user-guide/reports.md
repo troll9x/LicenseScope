@@ -1,5 +1,7 @@
 # Báo cáo WinLic
 
+Adobe rows never contain raw account data, NpdId, LicenseId, ASNP, OperatingConfig contents, serials, tokens, or toolkit stdout. Only sanitized product, mode, expiry, configuration-count, and service evidence can be exported.
+
 Autodesk rows contain sanitized product, registration, method, and service evidence. Helper stdout, serials, accounts, and license-server addresses are not retained.
 
 - JSON phù hợp lưu trữ và tích hợp hệ thống.

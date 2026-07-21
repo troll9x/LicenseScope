@@ -2,6 +2,8 @@
 
 ## Unified read-only audit
 
+Adobe desktop applications are included through a conservative read-only scanner. Named User installs require online verification; Shared Device/FRL status is only classified when an administrator-provided official toolkit record has an exact product match and trustworthy expiry.
+
 Autodesk desktop products are included through a conservative read-only scanner. Registration and service state are not proof of entitlement; no account API or license server is contacted.
 
 The current development branch provides one **Scan All** action for Windows and Microsoft Office/Project/Visio, plus the `WinLicAudit.Cli.exe audit --all` command. Sanitized reports can be exported as JSON, CSV, or standalone HTML.
