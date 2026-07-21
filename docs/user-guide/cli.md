@@ -1,5 +1,7 @@
 # WinLic command-line guide
 
+`audit --all` includes Autodesk read-only. Exit code 2 may mean entitlement cannot be verified offline; WinLic does not contact Autodesk Account or a license server.
+
 Mở Command Prompt tại thư mục chứa chương trình và chạy:
 
 ```text

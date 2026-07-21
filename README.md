@@ -2,6 +2,8 @@
 
 ## Unified read-only audit
 
+Autodesk desktop products are included through a conservative read-only scanner. Registration and service state are not proof of entitlement; no account API or license server is contacted.
+
 The current development branch provides one **Scan All** action for Windows and Microsoft Office/Project/Visio, plus the `WinLicAudit.Cli.exe audit --all` command. Sanitized reports can be exported as JSON, CSV, or standalone HTML.
 
 Audit mode is read-only: it does not activate products, install/remove keys, configure KMS, upload reports, or enable telemetry. Full keys, machine/account identifiers, and user paths are masked by default. This phase does not include an installer or claim verified Windows 7/8/ARM support.
