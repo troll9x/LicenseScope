@@ -245,7 +245,7 @@
                     <!-- Windows 10/11 tab content -->
                     <StackPanel x:Name="WinTabContent" Margin="10,10">
                         <Button x:Name="BtnVersionInfo"     Style="{StaticResource SideBtn}"
-                                Click="BtnVersionInfo_Click"/>
+                                Click="BtnWindowsAudit_Click"/>
                         <Button x:Name="BtnTestKey"         Style="{StaticResource DangerBtn}"
                                 Click="BtnTestKey_Click"/>
                         <Button x:Name="BtnRemoveLicense"   Style="{StaticResource DangerBtn}"

@@ -9,12 +9,15 @@ using System.Net.Sockets;
 using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
+using WinLic.Core.Models;
 
 
 namespace WinLicApp
@@ -539,6 +542,58 @@ namespace WinLicApp
         // =========================================================================
         // Option 1 — Full System & License Info (merged: old Options 1 + 2 + 3)
         // =========================================================================
+        private async void BtnWindowsAudit_Click(object sender, RoutedEventArgs e)
+        {
+            BtnVersionInfo.IsEnabled = false;
+            LogAction("WinScan_Title");
+            try
+            {
+                var services = ApplicationCompositionRoot.CreateWindowsAudit();
+                // WMI exposes no true async API on .NET Framework; run the bounded audit off the UI thread.
+                var audit = await Task.Run(() => services.Orchestrator.RunAllAsync(services.Context, CancellationToken.None));
+                foreach (var product in audit.Products)
+                {
+                    LogData(L.Get("WinScan_Product"), product.ProductName);
+                    LogData(L.Get("WinScan_Version"), product.ProductVersion);
+                    LogData(L.Get("WinScan_Status"), LocalizeStatus(product.Status));
+                    LogData(L.Get("WinScan_Type"), product.LicenseType);
+                    LogData(L.Get("WinScan_Key"), string.IsNullOrEmpty(product.PartialProductKey) ? "—" : product.PartialProductKey);
+                    LogData(L.Get("WinScan_Confidence"), product.Confidence.ToString());
+                    if (product.ExpirationDate.HasValue) LogData(L.Get("WinScan_Expiration"), product.ExpirationDate.Value.ToString("u"));
+                    foreach (var evidence in product.Evidence) LogDiag($"{evidence.Source} / {evidence.Name}: {evidence.Value}");
+                    foreach (var warning in product.Warnings) LogWarn(L.Get("WinScan_Warning") + ": " + warning);
+                }
+                foreach (var execution in audit.ScannerExecutions.Where(item => !item.WasSuccessful))
+                    LogError(L.Get("WinScan_Error") + ": " + execution.ErrorMessage);
+            }
+            catch (OperationCanceledException)
+            {
+                LogWarn(L.Get("WinScan_Cancelled"));
+            }
+            catch (Exception ex)
+            {
+                LogError(L.Get("WinScan_Error") + ": " + ex.GetType().Name);
+            }
+            finally
+            {
+                BtnVersionInfo.IsEnabled = true;
+            }
+        }
+
+        private static string LocalizeStatus(LicenseStatus status)
+        {
+            switch (status)
+            {
+                case LicenseStatus.Licensed: return L.Get("WinScan_Licensed");
+                case LicenseStatus.Unlicensed: return L.Get("WinScan_Unlicensed");
+                case LicenseStatus.GracePeriod: return L.Get("WinScan_Grace");
+                case LicenseStatus.Expired: return L.Get("WinScan_Expired");
+                case LicenseStatus.Trial: return L.Get("WinScan_Trial");
+                default: return L.Get("WinScan_Unknown");
+            }
+        }
+
+        // Retained temporarily for administrative helpers; no XAML control invokes this legacy read-only path.
         private void BtnVersionInfo_Click(object sender, RoutedEventArgs e)
         {
             LogAction("Act1");
