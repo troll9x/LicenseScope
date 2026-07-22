@@ -28,6 +28,7 @@ TestResults/
 # Local release artifacts (upload manually to GitHub Releases)
 releases/
 artifacts/
+installer/prerequisites/cache/
 
 # Agent-generated docs, work files, and rules (local only)
 agent/

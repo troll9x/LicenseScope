@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "fileName": "NDP48-x86-x64-AllOS-ENU.exe",
+  "sizeBytes": 121346568,
+  "sha256": "0A3A390C47E639D0F7FC65B21195FEE6B7F65B066F80F70C60FAB191D14B7E40",
+  "productName": "Microsoft .NET Framework 4.8",
+  "productVersion": "4.8.04115.00",
+  "fileVersion": "4.8.04115.00",
+  "originalFileName": "NDP48-x86-x64-AllOS-ENU.exe",
+  "signerSubject": "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+  "minimumReleaseKey": 528040,
+  "packageType": "offline-runtime-redistributable",
+  "supportedInstallerTargets": [ "windows-7-sp1-x86", "windows-7-sp1-x64", "windows-8.1-x86", "windows-8.1-x64", "windows-10-x86", "windows-10-x64", "windows-11-x64" ],
+  "arm64Policy": "do-not-run; require an already-installed compatible .NET Framework 4.8-or-later runtime",
+  "redistributionReview": "PERMITTED SUBJECT TO MICROSOFT .NET LIBRARY LICENSE TERMS; REVIEWED 2026-07-22"
+}

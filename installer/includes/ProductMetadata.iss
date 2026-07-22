@@ -1,0 +1,5 @@
+#define ProductName "WinLic License Audit"
+#define ProductPublisher "WinLic contributors"
+#define ProductExe "WinLicApp.exe"
+#define CliExe "WinLicAudit.Cli.exe"
+#define ProductAppId "{9DF7FE16-6903-4B48-98FB-866D77B31C7A}"

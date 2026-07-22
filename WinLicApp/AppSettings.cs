@@ -29,10 +29,18 @@ namespace WinLicApp
     public static class AppSettings
     {
         // ── Paths ──────────────────────────────────────────────────────────────
-        private static readonly string SettingsPath =
-            Path.Combine(
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".",
-                "settings.ini");
+        private static readonly string SettingsDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinLic");
+        private static readonly string SettingsPath = Path.Combine(SettingsDirectory, "settings.ini");
+        private static readonly string LegacySettingsPath = Path.Combine(
+            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".", "settings.ini");
+
+        private static void EnsureUserSettingsLocation()
+        {
+            Directory.CreateDirectory(SettingsDirectory);
+            if (!File.Exists(SettingsPath) && File.Exists(LegacySettingsPath))
+                File.Copy(LegacySettingsPath, SettingsPath, overwrite: false);
+        }
 
         /// <summary>GitHub raw URL for the default settings block.</summary>
         private const string DefaultsUrl =
@@ -332,6 +340,7 @@ namespace WinLicApp
 
         public static void Load()
         {
+            EnsureUserSettingsLocation();
             // Reset all loaded lists
             DefaultGvlkSuffixes.Clear();
             DefaultGvlkKeyDescriptions.Clear();
@@ -440,6 +449,7 @@ namespace WinLicApp
 
         public static void Save()
         {
+            EnsureUserSettingsLocation();
             // Save only user-block sections. The default block is managed by
             // UpdateDefaultsAsync() and preserved as-is.
             if (!File.Exists(SettingsPath))

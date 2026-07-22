@@ -1,5 +1,7 @@
 # WinLic Manager
 
+Installer documentation: [build](docs/installer/build.md) and [installation](docs/user-guide/installation.md). The offline Setup selects explicit x86/x64 payloads; ARM64 follows the documented x86-emulation policy.
+
 Compatibility is evidence-based: explicit net48 x86/x64 payloads, EOL technical targets for Windows 7 SP1/8.1, and a [verified matrix](docs/audit/phase-8-os-matrix.md). Windows 8.0 is unsupported. Windows on Arm emulation is experimental; native ARM64 is blocked pending net481 host/device testing. This is not a blanket Windows 7–11/ARM support claim.
 
 ## Unified read-only audit
