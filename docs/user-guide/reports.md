@@ -1,5 +1,7 @@
 # Báo cáo WinLic
 
+Reports are user data and never belong in release bundles or SBOM build drops.
+
 Compatibility diagnostics contain OS version/build, framework and native/process/execution architecture only; machine and hardware identifiers remain excluded.
 
 SketchUp report evidence contains booleans only. It excludes session contents, email, Trimble ID, token, serial, authorization code, server identity, and raw user-profile paths.

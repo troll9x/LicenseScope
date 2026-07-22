@@ -1,5 +1,7 @@
 # Installation
 
+Current 1.0.0 RC artifacts are unsigned; verify the included SHA-256 manifest and SPDX SBOM before installation.
+
 Run `WinLic-Setup.exe`, approve UAC, choose English or Vietnamese, and complete the wizard. Setup chooses x86/x64 automatically. The Desktop shortcut is optional.
 
 Windows 8.0 is blocked. Windows 7 requires SP1. Windows 7/8.1 are legacy end-of-support platforms. ARM64 uses x86 emulation and must already have a compatible .NET Framework 4.8-or-later runtime.

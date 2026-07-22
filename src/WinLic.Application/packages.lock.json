@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "winlic.compatibility": {
+        "type": "Project",
+        "dependencies": {
+          "WinLic.Core": "[1.0.0, )"
+        }
+      },
+      "winlic.core": {
+        "type": "Project"
+      },
+      "winlic.scanners.adobe": {
+        "type": "Project",
+        "dependencies": {
+          "WinLic.Core": "[1.0.0, )"
+        }
+      },
+      "winlic.scanners.autodesk": {
+        "type": "Project",
+        "dependencies": {
+          "WinLic.Core": "[1.0.0, )"
+        }
+      },
+      "winlic.scanners.office": {
+        "type": "Project",
+        "dependencies": {
+          "WinLic.Core": "[1.0.0, )"
+        }
+      },
+      "winlic.scanners.sketchup": {
+        "type": "Project",
+        "dependencies": {
+          "WinLic.Core": "[1.0.0, )"
+        }
+      },
+      "winlic.scanners.windows": {
+        "type": "Project",
+        "dependencies": {
+          "WinLic.Core": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,7 @@
 # WinLic Manager
 
+**Current release status: Release Candidate / unsigned.** Verify the supplied SHA-256 and SBOM; this is not a signed stable release.
+
 Installer documentation: [build](docs/installer/build.md) and [installation](docs/user-guide/installation.md). The offline Setup selects explicit x86/x64 payloads; ARM64 follows the documented x86-emulation policy.
 
 Compatibility is evidence-based: explicit net48 x86/x64 payloads, EOL technical targets for Windows 7 SP1/8.1, and a [verified matrix](docs/audit/phase-8-os-matrix.md). Windows 8.0 is unsupported. Windows on Arm emulation is experimental; native ARM64 is blocked pending net481 host/device testing. This is not a blanket Windows 7–11/ARM support claim.
@@ -14,7 +16,7 @@ Autodesk desktop products are included through a conservative read-only scanner.
 
 The current development branch provides one **Scan All** action for Windows and Microsoft Office/Project/Visio, plus the `WinLicAudit.Cli.exe audit --all` command. Sanitized reports can be exported as JSON, CSV, or standalone HTML.
 
-Audit mode is read-only: it does not activate products, install/remove keys, configure KMS, upload reports, or enable telemetry. Full keys, machine/account identifiers, and user paths are masked by default. This phase does not include an installer or claim verified Windows 7/8/ARM support.
+Audit mode is read-only: it does not activate products, install/remove keys, configure KMS, upload reports, or enable telemetry. Full keys, machine/account identifiers, and user paths are masked by default. The unsigned release-candidate installer follows the documented compatibility matrix; it does not imply blanket verified Windows 7/8/ARM support.
 
 See [Unified audit](docs/user-guide/unified-audit.md), [CLI guide](docs/user-guide/cli.md), and [report privacy](docs/user-guide/reports.md).
 

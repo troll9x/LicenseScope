@@ -1,5 +1,7 @@
 # Quét tất cả bản quyền
 
+Release candidate giữ nguyên ranh giới chỉ đọc và không thêm telemetry hoặc upload.
+
 GUI and CLI run a local read-only compatibility guard before audit. Unsupported combinations block; EOL/emulation warn. No framework download/install or compatibility-setting mutation occurs.
 
 SketchUp Desktop releases appear as separate rows. Session or Classic artifact presence never means licensed; subscription and Classic network states require external verification.

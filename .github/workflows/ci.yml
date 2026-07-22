@@ -1,0 +1,19 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, 'feat/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Toolchain inventory
+        shell: powershell
+        run: dotnet --info
+      - name: Local CI gates
+        shell: powershell
+        run: .\build\Invoke-CI.ps1 -Configuration All -Platforms AnyCPU,x86,x64
