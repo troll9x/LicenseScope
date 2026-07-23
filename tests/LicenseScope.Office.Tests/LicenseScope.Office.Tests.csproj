@@ -3,7 +3,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.10.4" />
-    <PackageReference Include="MSTest.TestFramework" Version="3.10.4" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.3.2" />
   </ItemGroup>
   <ItemGroup><ProjectReference Include="..\..\src\LicenseScope.Core\LicenseScope.Core.csproj" /><ProjectReference Include="..\..\src\LicenseScope.Office\LicenseScope.Office.csproj" /></ItemGroup>
 </Project>
