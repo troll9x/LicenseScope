@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- .NET Framework 4.8 is pre-installed on Windows 10 (1903+) and Windows 11.
+         No runtime download needed. Output EXE is ~1 MB instead of ~155 MB. -->
+    <TargetFramework>net48</TargetFramework>
+    <RuntimeIdentifiers>win-x86;win-x64</RuntimeIdentifiers>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>licensescope.ico</ApplicationIcon>
+    <AssemblyName>LicenseScope.App</AssemblyName>
+    <RootNamespace>LicenseScope.App</RootNamespace>
+  </PropertyGroup>
+
+  <!-- System.Management is built into .NET Framework 4.8 — no NuGet needed -->
+  <ItemGroup>
+    <Reference Include="System.Management" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="licensescope.ico" />
+    <Resource Include="licensescope_256.png" />
+    <Content Include="Samples\license-audit-simulation.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Samples\README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\LicenseScope.Application\LicenseScope.Application.csproj" />
+    <ProjectReference Include="..\src\LicenseScope.Core\LicenseScope.Core.csproj" />
+    <ProjectReference Include="..\src\LicenseScope.Compatibility\LicenseScope.Compatibility.csproj" />
+    <ProjectReference Include="..\src\LicenseScope.Reporting\LicenseScope.Reporting.csproj" />
+    <ProjectReference Include="..\src\LicenseScope.Office\LicenseScope.Office.csproj" />
+    <ProjectReference Include="..\src\LicenseScope.Windows\LicenseScope.Windows.csproj" />
+  </ItemGroup>
+</Project>

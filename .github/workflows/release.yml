@@ -9,19 +9,19 @@ on:
       generate_attestation: {description: 'Attestation readiness flag', type: boolean, default: false}
 permissions:
   contents: read
-concurrency: winlic-production-release
+concurrency: licensescope-production-release
 jobs:
   build:
     if: github.ref_protected == true && inputs.publish_release == false
-    runs-on: [self-hosted, windows, x64, winlic-release]
+    runs-on: [self-hosted, windows, x64, licensescope-release]
     environment: production-release
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Verify protected runner prerequisites
         shell: powershell
         run: |
-          if (-not $env:WINLIC_SBOM_TOOL) { throw 'Protected runner SBOM tool path is not configured.' }
-          if (-not (Test-Path $env:WINLIC_SBOM_TOOL)) { throw 'SBOM tool is missing.' }
+          if (-not $env:LICENSESCOPE_SBOM_TOOL) { throw 'Protected runner SBOM tool path is not configured.' }
+          if (-not (Test-Path $env:LICENSESCOPE_SBOM_TOOL)) { throw 'SBOM tool is missing.' }
           if (-not (Test-Path 'C:\Program Files\Inno Setup 7\ISCC.exe')) { throw 'Inno Setup 7 is missing.' }
       - name: Build only; never publish
         shell: powershell
@@ -31,4 +31,4 @@ jobs:
           ALLOW_UNSIGNED: ${{ inputs.allow_unsigned }}
         run: |
           $allowUnsigned = [bool]::Parse($env:ALLOW_UNSIGNED)
-          .\build\Build-ReleaseCandidate.ps1 -Version $env:RELEASE_VERSION -PrereleaseLabel $env:PRERELEASE_LABEL -AllowUnsigned:$allowUnsigned -SbomToolPath $env:WINLIC_SBOM_TOOL -ExpectedSbomToolVersion 4.1.5 -OutputRoot .\artifacts\release
+          .\build\Build-ReleaseCandidate.ps1 -Version $env:RELEASE_VERSION -PrereleaseLabel $env:PRERELEASE_LABEL -AllowUnsigned:$allowUnsigned -SbomToolPath $env:LICENSESCOPE_SBOM_TOOL -ExpectedSbomToolVersion 4.1.5 -OutputRoot .\artifacts\release

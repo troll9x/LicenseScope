@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "licensescope.adobe": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.application": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Adobe": "[1.0.0, )",
+          "LicenseScope.Autodesk": "[1.0.0, )",
+          "LicenseScope.Compatibility": "[1.0.0, )",
+          "LicenseScope.Core": "[1.0.0, )",
+          "LicenseScope.Office": "[1.0.0, )",
+          "LicenseScope.SketchUp": "[1.0.0, )",
+          "LicenseScope.Windows": "[1.0.0, )"
+        }
+      },
+      "licensescope.autodesk": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.compatibility": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.core": {
+        "type": "Project"
+      },
+      "licensescope.office": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.reporting": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.sketchup": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.windows": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      }
+    },
+    ".NETFramework,Version=v4.8/win-x64": {},
+    ".NETFramework,Version=v4.8/win-x86": {}
+  }
+}

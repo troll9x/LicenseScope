@@ -1,0 +1,13 @@
+using System; using System.Collections.Generic; using System.Globalization; using System.Linq; using LicenseScope.Adobe.Models;
+namespace LicenseScope.Adobe.Parsing
+{
+ public sealed class AdobeLicenseInformationParser
+ {
+  static readonly string[] DateFormats={"MM/dd/yy HH:mm:ss zzz","MM/dd/yyyy HH:mm:ss zzz","yyyy-MM-dd'T'HH:mm:ssK","yyyy-MM-dd HH:mm:ss zzz"};
+  public AdobeLicenseInformationResult Parse(string output){if(string.IsNullOrWhiteSpace(output))return Fail("Adobe Licensing Toolkit returned empty output.");if(output.IndexOf("Operation Failed",StringComparison.OrdinalIgnoreCase)>=0)return Fail("Adobe Licensing Toolkit reported an operation failure.");var records=new List<AdobeLicenseRecord>();AdobeLicenseRecord current=null;foreach(var raw in output.Replace("\r","").Split('\n')){var line=raw.Trim();var colon=line.IndexOf(':');if(colon<1)continue;var key=line.Substring(0,colon).Trim();var value=line.Substring(colon+1).Trim();if(key.Equals("NpdId",StringComparison.OrdinalIgnoreCase)){if(current!=null&&HasData(current))records.Add(current);current=new AdobeLicenseRecord{NpdIdPresent=!string.IsNullOrWhiteSpace(value)};continue;}if(current==null)current=new AdobeLicenseRecord();if(key.Equals("AppId",StringComparison.OrdinalIgnoreCase))current.AppId=value;else if(key.Equals("DeploymentMode",StringComparison.OrdinalIgnoreCase))current.DeploymentMode=value;else if(key.Equals("LicenseId",StringComparison.OrdinalIgnoreCase))current.LicenseIdPresent=!string.IsNullOrWhiteSpace(value);else if(key.Equals("CacheExpiry",StringComparison.OrdinalIgnoreCase)){current.CacheExpiry=Date(value,out var clear);current.DatesUnambiguous=clear;}else if(key.Equals("LicenseExpiry",StringComparison.OrdinalIgnoreCase)){current.LicenseExpiry=Date(value,out var clear);current.DatesUnambiguous=current.DatesUnambiguous&&clear;}}
+   if(current!=null&&HasData(current))records.Add(current);var unique=records.GroupBy(x=>(x.AppId+"|"+x.DeploymentMode+"|"+x.LicenseExpiry).ToUpperInvariant()).Select(x=>x.First()).ToArray();return new AdobeLicenseInformationResult{Successful=true,Records=unique};}
+  static DateTimeOffset? Date(string value,out bool clear){clear=false;foreach(var f in DateFormats)if(DateTimeOffset.TryParseExact(value,f,CultureInfo.InvariantCulture,DateTimeStyles.AllowWhiteSpaces,out var d)){clear=true;return d;}return null;}
+  static bool HasData(AdobeLicenseRecord x)=>!string.IsNullOrWhiteSpace(x.AppId)||!string.IsNullOrWhiteSpace(x.DeploymentMode)||x.LicenseExpiry.HasValue||x.CacheExpiry.HasValue;
+  static AdobeLicenseInformationResult Fail(string warning)=>new AdobeLicenseInformationResult{Warnings=new[]{warning}};
+ }
+}

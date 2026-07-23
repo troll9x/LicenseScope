@@ -1,25 +1,25 @@
-# WinLic command-line guide
+# LicenseScope command-line guide
 
 Use `--version` to verify the CLI matches the 1.0.0 release manifest.
 
-`WinLicAudit.Cli.exe compatibility` and `compatibility --json` return sanitized OS/framework/native/process/execution-mode/payload/EOL data. Codes: 7 unsupported OS/architecture, 8 insufficient framework, 9 undetermined. Audit codes are unchanged.
+`LicenseScope.Cli.exe compatibility` and `compatibility --json` return sanitized OS/framework/native/process/execution-mode/payload/EOL data. Codes: 7 unsupported OS/architecture, 8 insufficient framework, 9 undetermined. Audit codes are unchanged.
 
 `audit --all` runs SketchUp fifth. The scanner launches no SketchUp process or browser and performs no Trimble/API or license-server connection.
 
-`audit --all` runs Adobe fourth after Autodesk. WinLic neither downloads the Adobe toolkit nor accepts an arbitrary toolkit path; a future installer/admin may provision it under the application-managed trusted tools directory.
+`audit --all` runs Adobe fourth after Autodesk. LicenseScope neither downloads the Adobe toolkit nor accepts an arbitrary toolkit path; a future installer/admin may provision it under the application-managed trusted tools directory.
 
-`audit --all` includes Autodesk read-only. Exit code 2 may mean entitlement cannot be verified offline; WinLic does not contact Autodesk Account or a license server.
+`audit --all` includes Autodesk read-only. Exit code 2 may mean entitlement cannot be verified offline; LicenseScope does not contact Autodesk Account or a license server.
 
 Mở Command Prompt tại thư mục chứa chương trình và chạy:
 
 ```text
-WinLicAudit.Cli.exe audit --all
+LicenseScope.Cli.exe audit --all
 ```
 
 Xuất ba báo cáo:
 
 ```text
-WinLicAudit.Cli.exe audit --all --format json,csv,html --output ".\reports"
+LicenseScope.Cli.exe audit --all --format json,csv,html --output ".\reports"
 ```
 
-Dùng `WinLicAudit.Cli.exe --help` để xem tùy chọn. Exit code 0 là hoàn tất sạch; 1 có Unlicensed/Expired; 2 có dữ liệu chưa đủ; 3 lỗi hệ thống; 4 tham số sai; 5 ghi report lỗi; 6 bị hủy. CLI chỉ đọc và không yêu cầu PowerShell script.
+Dùng `LicenseScope.Cli.exe --help` để xem tùy chọn. Exit code 0 là hoàn tất sạch; 1 có Unlicensed/Expired; 2 có dữ liệu chưa đủ; 3 lỗi hệ thống; 4 tham số sai; 5 ghi report lỗi; 6 bị hủy. CLI chỉ đọc và không yêu cầu PowerShell script.

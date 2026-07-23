@@ -1,0 +1,146 @@
+<Window x:Class="LicenseScope.App.AuditSettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cài đặt kiểm tra" Height="780" Width="760"
+        MinHeight="560" MinWidth="620"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="#f8f7fe">
+    <Window.Resources>
+        <Style TargetType="GroupBox">
+            <Setter Property="BorderBrush" Value="#d4cdf0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Foreground" Value="#4c1d95"/>
+            <Setter Property="FontFamily" Value="Segoe UI Semibold"/>
+        </Style>
+        <Style x:Key="DefaultBox" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="Background" Value="#ece9fb"/>
+            <Setter Property="Foreground" Value="#6b7280"/>
+            <Setter Property="BorderBrush" Value="#d4cdf0"/>
+            <Setter Property="Padding" Value="7"/>
+            <Setter Property="FontFamily" Value="Cascadia Code, Consolas"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+        </Style>
+        <Style x:Key="CustomBox" TargetType="TextBox" BasedOn="{StaticResource DefaultBox}">
+            <Setter Property="IsReadOnly" Value="False"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#1f2937"/>
+            <Setter Property="BorderBrush" Value="#a78bfa"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#ece9fb" BorderBrush="#d4cdf0"
+                BorderThickness="0,0,0,1" Padding="20,14">
+            <StackPanel>
+                <TextBlock Text="Cài đặt kiểm tra" FontSize="18"
+                           FontFamily="Segoe UI Semibold" Foreground="#4c1d95"/>
+                <TextBlock Text="Cấu hình các chỉ dấu bổ sung cho lần quét chỉ đọc. Danh sách mặc định không bị sửa."
+                           Margin="0,5,0,0" Foreground="#6b7280" TextWrapping="Wrap"/>
+                <CheckBox x:Name="EnableInspectionCheckBox"
+                          Content="Bật kiểm tra mở rộng theo cấu hình License Scope"
+                          Margin="0,12,0,0" Foreground="#374151"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" Padding="20,14"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock Text="Mặc định (chỉ đọc)" Foreground="#6b7280" Margin="0,0,0,5"/>
+                <TextBlock Text="Tùy chỉnh của bạn được lưu tại %LOCALAPPDATA%\LicenseScope\audit-settings.ini."
+                           Foreground="#6b7280" Margin="0,0,0,12"/>
+
+                <GroupBox Header="Khóa sản phẩm bổ sung">
+                    <StackPanel>
+                        <TextBlock Text="Mỗi dòng: FULL-KEY = Mô tả, hoặc 5 ký tự cuối = Mô tả."
+                                   Foreground="#6b7280" Margin="0,0,0,6"/>
+                        <TextBox x:Name="ExtraKeysTextBox" Style="{StaticResource CustomBox}" Height="95"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Cổng TCP cục bộ">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DefaultPortsTextBox" Grid.Column="0" Style="{StaticResource DefaultBox}" Height="65"/>
+                        <TextBox x:Name="ExtraPortsTextBox" Grid.Column="2" Style="{StaticResource CustomBox}" Height="65"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Từ khóa dịch vụ">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DefaultServicesTextBox" Grid.Column="0" Style="{StaticResource DefaultBox}" Height="105"/>
+                        <TextBox x:Name="ExtraServicesTextBox" Grid.Column="2" Style="{StaticResource CustomBox}" Height="105"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Từ khóa tác vụ đã lập lịch">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DefaultTasksTextBox" Grid.Column="0" Style="{StaticResource DefaultBox}" Height="95"/>
+                        <TextBox x:Name="ExtraTasksTextBox" Grid.Column="2" Style="{StaticResource CustomBox}" Height="95"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Từ khóa tiến trình">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DefaultProcessesTextBox" Grid.Column="0" Style="{StaticResource DefaultBox}" Height="105"/>
+                        <TextBox x:Name="ExtraProcessesTextBox" Grid.Column="2" Style="{StaticResource CustomBox}" Height="105"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Từ khóa miền máy chủ KMS">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DefaultDomainsTextBox" Grid.Column="0" Style="{StaticResource DefaultBox}" Height="115"/>
+                        <TextBox x:Name="ExtraDomainsTextBox" Grid.Column="2" Style="{StaticResource CustomBox}" Height="115"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Đường dẫn tệp hoặc thư mục">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DefaultPathsTextBox" Grid.Column="0" Style="{StaticResource DefaultBox}" Height="105"/>
+                        <TextBox x:Name="ExtraPathsTextBox" Grid.Column="2" Style="{StaticResource CustomBox}" Height="105"/>
+                    </Grid>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Background="#ece9fb" BorderBrush="#d4cdf0"
+                BorderThickness="0,1,0,0" Padding="20,10">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Xóa tùy chỉnh" Width="110" Height="32" Margin="0,0,8,0"
+                        Click="ClearCustom_Click"/>
+                <Button Content="Hủy" Width="80" Height="32" Margin="0,0,8,0"
+                        Click="Cancel_Click"/>
+                <Button Content="Lưu" Width="90" Height="32" Click="Save_Click"
+                        Background="#6d28d9" Foreground="White"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

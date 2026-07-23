@@ -6,7 +6,7 @@ Place the Microsoft-signed .NET Framework 4.8 offline runtime named
 `Build-Installer.ps1` verifies its exact byte length, SHA-256, version metadata,
 Authenticode signature and Microsoft signer before staging it. It never downloads
 or executes the package. Setup invokes it only when the installed .NET Framework
-release key is below `528040`, using `/q /norestart /ChainingPackage WinLic`.
+release key is below `528040`, using `/q /norestart /ChainingPackage LicenseScope`.
 
 The package must not be substituted with the web installer, Developer Pack, or
 Targeting Pack. Redistribution remains subject to Microsoft's license terms.

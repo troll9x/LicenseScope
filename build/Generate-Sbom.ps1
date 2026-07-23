@@ -11,16 +11,16 @@ if($sig.Status-ne'Valid'-or$sig.SignerCertificate.Subject-notmatch '^CN=Microsof
 $hash=(Get-FileHash $SbomToolPath -Algorithm SHA256).Hash
 if($ExpectedSha256-and$hash-ne$ExpectedSha256){throw 'SBOM tool hash mismatch.'}
 New-Item -ItemType Directory -Force $OutputDirectory|Out-Null
-$telemetry=Join-Path $env:TEMP ('winlic-sbom-'+[guid]::NewGuid()+'.json')
+$telemetry=Join-Path $env:TEMP ('licensescope-sbom-'+[guid]::NewGuid()+'.json')
 try {
-  $generationOutput=@(& $SbomToolPath generate -b $DropPath -bc $ComponentPath -pn WinLic -pv $Version -ps WinLic -nsb https://github.com/ardennguyen/WinLic -nsu ("WinLic-"+$Version) -mi SPDX:2.2 -li false -F false -t $telemetry -m $OutputDirectory -D true -V Warning 2>&1)
+  $generationOutput=@(& $SbomToolPath generate -b $DropPath -bc $ComponentPath -pn LicenseScope -pv $Version -ps LicenseScope -nsb https://github.com/troll9x/LicenseScope -nsu ("LicenseScope-"+$Version) -mi SPDX:2.2 -li false -F false -t $telemetry -m $OutputDirectory -D true -V Warning 2>&1)
   if($LASTEXITCODE){throw 'SBOM generation failed.'}
   $manifest=Get-ChildItem $OutputDirectory -Recurse -Filter manifest.spdx.json|Select-Object -First 1
   if(-not$manifest){throw 'SPDX manifest missing.'}
   $validation=Join-Path $OutputDirectory 'validation.json'
   $validationOutput=@(& $SbomToolPath validate -b $DropPath -m (Join-Path $OutputDirectory '_manifest') -o $validation -mi SPDX:2.2 -F false -V Warning 2>&1)
   if($LASTEXITCODE){throw 'SBOM validation failed.'}
-  $final=Join-Path $OutputDirectory ("WinLic-$Version-sbom.spdx.json")
+  $final=Join-Path $OutputDirectory ("LicenseScope-$Version-sbom.spdx.json")
   Copy-Item $manifest.FullName $final -Force
   $raw=Get-Content $final -Raw
   if($raw-match 'C:\\Users\\|D:\\Tools\\|product.?key|access.?token|refresh.?token|BEGIN PRIVATE KEY'){throw 'SBOM privacy scan failed.'}

@@ -1,0 +1,179 @@
+<Window x:Class="LicenseScope.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="License Scope" Icon="licensescope_256.png"
+        Height="700" Width="1120" MinHeight="520" MinWidth="860"
+        WindowStartupLocation="CenterScreen" Background="#f8f7fe">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="0,0,0,20">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock Text="License Scope" FontFamily="Segoe UI Semibold"
+                           FontSize="28" Foreground="#4c1d95"/>
+                <TextBlock Text="Kiểm tra bản quyền máy tính ở chế độ chỉ đọc"
+                           FontSize="13" Foreground="#6b7280" Margin="0,4,0,0"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cài đặt kiểm tra" Width="130" Height="34"
+                        Margin="0,0,8,0" Click="AuditSettings_Click"/>
+                <Button Content="Giới thiệu" Width="100" Height="34" Click="About_Click"/>
+            </StackPanel>
+        </DockPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+            <Button x:Name="ScanButton" Content="Quét tất cả" Width="110" Height="36"
+                    Click="Scan_Click" Background="#6d28d9" Foreground="White"/>
+            <Button x:Name="CancelButton" Content="Hủy" Width="90" Height="36"
+                    Margin="8,0,0,0" Click="Cancel_Click" IsEnabled="False"/>
+            <Separator Width="18" Opacity="0"/>
+            <Button x:Name="ExportJsonButton" Content="JSON" Width="72" Height="36"
+                    Click="ExportJson_Click" IsEnabled="False"/>
+            <Button x:Name="ExportCsvButton" Content="CSV" Width="72" Height="36"
+                    Margin="6,0,0,0" Click="ExportCsv_Click" IsEnabled="False"/>
+            <Button x:Name="ExportHtmlButton" Content="HTML" Width="72" Height="36"
+                    Margin="6,0,0,0" Click="ExportHtml_Click" IsEnabled="False"/>
+            <TextBlock Text="Bộ lọc" VerticalAlignment="Center" Margin="24,0,8,0"/>
+            <ComboBox x:Name="StatusFilter" Width="170" Height="30"
+                      SelectedIndex="0" SelectionChanged="StatusFilter_SelectionChanged">
+                <ComboBoxItem Content="Tất cả" Tag="All"/>
+                <ComboBoxItem Content="Đã cấp phép" Tag="Licensed"/>
+                <ComboBoxItem Content="Chưa cấp phép / Hết hạn" Tag="Unlicensed"/>
+                <ComboBoxItem Content="Cần chú ý" Tag="Attention"/>
+                <ComboBoxItem Content="Không xác định / Lỗi" Tag="Unknown"/>
+            </ComboBox>
+            <CheckBox x:Name="RevealKeysCheckBox" Content="Hiện đầy đủ khóa"
+                      Margin="18,0,0,0" VerticalAlignment="Center"
+                      Checked="RevealKeys_Changed" Unchecked="RevealKeys_Changed"/>
+        </StackPanel>
+
+        <WrapPanel Grid.Row="2" Margin="0,0,0,10">
+            <Button x:Name="CheckKmsButton" Content="Kiểm tra KMS" Width="120" Height="34"
+                    Click="CheckKms_Click"/>
+            <Button x:Name="ClearKmsButton" Content="Xóa cấu hình KMS" Width="145" Height="34"
+                    Margin="8,0,0,0" Click="ClearKms_Click"
+                    Background="#fff7ed" Foreground="#b91c1c"/>
+            <Button x:Name="ThirdPartyCheckButton" Content="Kiểm tra kích hoạt bên thứ ba"
+                    Width="205" Height="34" Margin="8,0,0,0"
+                    Click="CheckThirdParty_Click"/>
+            <Button x:Name="SimulationScanButton" Content="Quét file giả lập"
+                    Width="145" Height="34" Margin="8,0,0,0"
+                    Click="SimulationScan_Click"/>
+            <Button x:Name="CrackTraceButton" Content="Phân tích dấu vết crack"
+                    Width="175" Height="34" Margin="8,0,0,0"
+                    Click="CrackTrace_Click"
+                    Background="#fefce8" Foreground="#854d0e"/>
+        </WrapPanel>
+
+        <ProgressBar x:Name="ScanProgress" Grid.Row="3" Height="6" Minimum="0" Maximum="100"
+                     Margin="0,0,0,12" Foreground="#7c3aed"/>
+
+        <DataGrid x:Name="ResultsGrid" Grid.Row="4" AutoGenerateColumns="False"
+                  IsReadOnly="True" CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column" AlternatingRowBackground="#f5f3ff"
+                  RowDetailsVisibilityMode="VisibleWhenSelected"
+                  HorizontalScrollBarVisibility="Auto">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Bộ quét" Binding="{Binding ScannerId}" Width="150"/>
+                <DataGridTextColumn Header="Nhà cung cấp" Binding="{Binding Vendor}" Width="110"/>
+                <DataGridTextColumn Header="Sản phẩm" Binding="{Binding ProductName}" Width="*" MinWidth="180"/>
+                <DataGridTextColumn Header="Phiên bản" Binding="{Binding ProductVersion}" Width="110"/>
+                <DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="150"/>
+                <DataGridTextColumn Header="Loại bản quyền" Binding="{Binding LicenseType}" Width="150"/>
+                <DataGridTextColumn Header="Khóa sản phẩm" Binding="{Binding PartialProductKey}" Width="210"/>
+                <DataGridTextColumn Header="Độ tin cậy" Binding="{Binding Confidence}" Width="100"/>
+                <DataGridTextColumn Header="Hết hạn" Binding="{Binding ExpirationDate}" Width="145"/>
+                <DataGridTextColumn Header="Cảnh báo" Binding="{Binding Warnings.Count}" Width="80"/>
+                <DataGridTemplateColumn Header="Xử lý" Width="125">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Gỡ phần mềm" Padding="10,4"
+                                    Click="UninstallSoftware_Click"
+                                    Background="#fff7ed" Foreground="#b91c1c">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Installed}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsLicensed}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ScannerId}" Value="microsoft.windows">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ErrorCode}" Value="SIMULATION">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+            <DataGrid.RowDetailsTemplate>
+                <DataTemplate>
+                    <Border Background="#faf8ff" BorderBrush="#ddd6fe" BorderThickness="0,1,0,1"
+                            Padding="16,10">
+                        <StackPanel>
+                            <TextBlock Text="Chi tiết kiểm tra" FontFamily="Segoe UI Semibold"
+                                       Foreground="#4c1d95" Margin="0,0,0,6"/>
+                            <ItemsControl ItemsSource="{Binding Warnings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding StringFormat=• {0}}" Foreground="#92400e"
+                                                   TextWrapping="Wrap" Margin="0,2"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ItemsControl ItemsSource="{Binding Evidence}" Margin="0,6,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock TextWrapping="Wrap" Foreground="#4b5563" Margin="0,1">
+                                            <Run Text="{Binding Source}"/><Run Text=" — "/>
+                                            <Run Text="{Binding Name}"/><Run Text=": "/>
+                                            <Run Text="{Binding Value}"/>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </DataGrid.RowDetailsTemplate>
+        </DataGrid>
+
+        <Expander x:Name="CrackTracePanel" Grid.Row="5"
+                  Header="Phân tích dấu vết crack Windows"
+                  Visibility="Collapsed" IsExpanded="True" Margin="0,12,0,0">
+            <Border BorderBrush="#d1d5db" BorderThickness="1" Background="#111827"
+                    CornerRadius="4" Padding="4">
+                <RichTextBox x:Name="CrackTraceLog" Height="300"
+                             IsReadOnly="True" IsDocumentEnabled="False"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             FontFamily="Consolas" FontSize="13"
+                             Background="#111827" Foreground="#e5e7eb"
+                             BorderThickness="0" Padding="10"/>
+            </Border>
+        </Expander>
+
+        <DockPanel Grid.Row="6" Margin="0,12,0,0">
+            <TextBlock x:Name="StatusText" Text="Sẵn sàng. Ứng dụng không thay đổi trạng thái bản quyền."
+                       Foreground="#4b5563" VerticalAlignment="Center"/>
+            <TextBlock DockPanel.Dock="Right" Text="Settings: %LOCALAPPDATA%\LicenseScope"
+                       Foreground="#9ca3af" HorizontalAlignment="Right"/>
+        </DockPanel>
+    </Grid>
+</Window>

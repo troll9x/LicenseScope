@@ -1,0 +1,30 @@
+<Window x:Class="LicenseScope.App.AboutDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About License Scope" Icon="licensescope_256.png"
+        Width="470" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Background="#f8f7fe">
+    <StackPanel Margin="36,28">
+        <Image Source="licensescope_256.png" Width="64" Height="64"/>
+        <TextBlock Text="License Scope" HorizontalAlignment="Center" Margin="0,12,0,0"
+                   FontFamily="Segoe UI Semibold" FontSize="24" Foreground="#4c1d95"/>
+        <TextBlock Text="Read-only desktop license audit for Windows and installed software"
+                   TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,22" Foreground="#6b7280"/>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Text="Publisher" Foreground="#6b7280"/>
+            <TextBlock Grid.Column="1" Text="Nguyễn Hồng Sơn" FontFamily="Segoe UI Semibold"/>
+        </Grid>
+        <Grid Margin="0,10,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Text="Repository" Foreground="#6b7280"/>
+            <TextBlock Grid.Column="1">
+                <Hyperlink NavigateUri="https://github.com/troll9x/LicenseScope"
+                           RequestNavigate="Repository_RequestNavigate">github.com/troll9x/LicenseScope</Hyperlink>
+            </TextBlock>
+        </Grid>
+        <TextBlock Text="Upstream attribution and private-development restrictions are documented in UPSTREAM.md, NOTICE.md, and PROVENANCE.md."
+                   TextWrapping="Wrap" TextAlignment="Center" Margin="0,24,0,20" Foreground="#6b7280"/>
+        <Button Content="Close" Width="100" Height="34" HorizontalAlignment="Center" Click="Close_Click"/>
+    </StackPanel>
+</Window>

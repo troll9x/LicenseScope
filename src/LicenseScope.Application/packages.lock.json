@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "licensescope.adobe": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.autodesk": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.compatibility": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.core": {
+        "type": "Project"
+      },
+      "licensescope.office": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.sketchup": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      },
+      "licensescope.windows": {
+        "type": "Project",
+        "dependencies": {
+          "LicenseScope.Core": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

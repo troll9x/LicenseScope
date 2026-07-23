@@ -5,7 +5,7 @@ param(
     [switch]$SkipTests,
     [switch]$TestForceX86,
     [switch]$TestInstallMode,
-    [string]$OutputBaseFilename = 'WinLic-Setup',
+    [string]$OutputBaseFilename = 'LicenseScope-Setup',
     [string]$ArtifactSubdirectory = 'installer',
     [string]$VersionOverride = ''
 )
@@ -42,22 +42,21 @@ function Verify-Prerequisite {
 }
 function Copy-Payload([string]$Architecture, [string]$Destination) {
     Reset-Directory $Destination
-    dotnet build (Join-Path $repo 'WinLic.sln') -c $Configuration --no-restore --verbosity minimal /p:PlatformTarget=$Architecture /p:Prefer32Bit=false
+    dotnet build (Join-Path $repo 'LicenseScope.sln') -c $Configuration --no-restore --verbosity minimal /p:PlatformTarget=$Architecture /p:Prefer32Bit=false
     if ($LASTEXITCODE -ne 0) { throw "$Architecture build failed." }
     $sources = @(
-        (Join-Path $repo "WinLicApp\bin\$Configuration\net48"),
-        (Join-Path $repo "src\WinLic.Cli\bin\$Configuration\net48")
+        (Join-Path $repo "LicenseScope.App\bin\$Configuration\net48"),
+        (Join-Path $repo "src\LicenseScope.Cli\bin\$Configuration\net48")
     )
     foreach ($source in $sources) {
         Get-ChildItem -LiteralPath $source -File | Where-Object { $_.Extension -in '.exe','.dll','.config' } | Copy-Item -Destination $Destination -Force
     }
-    Copy-Item (Join-Path $repo 'WinLicPS\settings.default.ini') (Join-Path $Destination 'settings.ini') -Force
-    foreach ($required in 'WinLicApp.exe','WinLicAudit.Cli.exe') { Assert-Condition (Test-Path (Join-Path $Destination $required)) "$required missing from $Architecture payload." }
+    foreach ($required in 'LicenseScope.App.exe','LicenseScope.Cli.exe') { Assert-Condition (Test-Path (Join-Path $Destination $required)) "$required missing from $Architecture payload." }
     $forbidden = Get-ChildItem $Destination -Recurse -File | Where-Object { $_.Extension -in '.pdb','.cs','.ps1','.trx' -or $_.Name -match 'Tests' }
     Assert-Condition ($null -eq $forbidden) "$Architecture payload contains forbidden files."
     $peTool = Join-Path $repo 'build\Get-PEArchitecture.ps1'
-    $guiMachine = & $peTool (Join-Path $Destination 'WinLicApp.exe')
-    $cliMachine = & $peTool (Join-Path $Destination 'WinLicAudit.Cli.exe')
+    $guiMachine = & $peTool (Join-Path $Destination 'LicenseScope.App.exe')
+    $cliMachine = & $peTool (Join-Path $Destination 'LicenseScope.Cli.exe')
     $expected = if ($Architecture -eq 'x86') { 'x86' } else { 'x64' }
     Assert-Condition (($guiMachine -join '') -match $expected) "GUI PE architecture is not $expected."
     Assert-Condition (($cliMachine -join '') -match $expected) "CLI PE architecture is not $expected."
@@ -65,10 +64,10 @@ function Copy-Payload([string]$Architecture, [string]$Destination) {
 
 Assert-Condition (Test-Path -LiteralPath $InnoCompiler) "Inno Setup compiler not found: $InnoCompiler"
 Verify-Prerequisite
-dotnet restore (Join-Path $repo 'WinLic.sln') --verbosity minimal
+dotnet restore (Join-Path $repo 'LicenseScope.sln') --verbosity minimal
 if ($LASTEXITCODE -ne 0) { throw 'Restore failed.' }
 if (-not $SkipTests) {
-    dotnet test (Join-Path $repo 'WinLic.sln') -c $Configuration --no-restore --verbosity minimal
+    dotnet test (Join-Path $repo 'LicenseScope.sln') -c $Configuration --no-restore --verbosity minimal
     if ($LASTEXITCODE -ne 0) { throw 'Tests failed.' }
 }
 Reset-Directory $artifactRoot
@@ -77,7 +76,7 @@ $x86 = Join-Path $stageRoot 'x86'; $x64 = Join-Path $stageRoot 'x64'
 Copy-Payload 'x86' $x86
 Copy-Payload 'x64' $x64
 
-$version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $x64 'WinLicApp.exe')).FileVersion
+$version = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $x64 'LicenseScope.App.exe')).FileVersion
 if ($version -notmatch '^\d+\.\d+\.\d+\.\d+$') { $version = '1.0.0.0' }
 if ($VersionOverride) {
     if ($VersionOverride -notmatch '^\d+\.\d+\.\d+\.\d+$') { throw 'VersionOverride must contain four numeric parts.' }
@@ -90,7 +89,7 @@ $defines = @(
 )
 if ($TestForceX86) { $defines += '/DTestForceX86=1' }
 if ($TestInstallMode) { $defines += '/DTestInstallMode=1' }
-& $InnoCompiler @defines (Join-Path $installer 'WinLic.iss')
+& $InnoCompiler @defines (Join-Path $installer 'LicenseScope.iss')
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed ($LASTEXITCODE)." }
 $setup = Join-Path $artifactRoot ($OutputBaseFilename + '.exe')
 Assert-Condition (Test-Path $setup) 'Expected universal Setup output was not created.'

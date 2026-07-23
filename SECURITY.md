@@ -2,4 +2,9 @@
 
 Only the current 1.0 release line receives security fixes. Use GitHub private vulnerability reporting when enabled (`NEEDS REPOSITORY SETTING`). Do not place product keys, license reports, account files, tokens, cookies, machine identifiers, or credentials in public issues. No private security email has been verified.
 
-WinLic audit mode is read-only: activation, remediation, bypass, public KMS use, telemetry and report upload are outside scope. Reports should be sanitized before sharing.
+License Scope audit mode is read-only: activation, bypass, public KMS use, telemetry and report upload are outside scope. Explicit GUI remediation is limited to clearing a manually configured Windows KMS host and opening a Windows-registered vendor uninstaller for an installed product not confirmed as licensed. Both require typed confirmation and elevation. KMS removal invokes only `slmgr.vbs /ckms`; software removal blocks shell/script hosts and never offers Windows itself for uninstall. Neither path removes license keys, rearms Windows, or starts activation. Reports should be sanitized before sharing.
+
+The Windows crack-trace analyzer is separate from those remediation actions and
+is strictly read-only. It does not request elevation, mutate license state,
+write Registry values, modify tasks or services, or delete files. Inaccessible
+sources produce `UNKNOWN`/`INCONCLUSIVE` instead of triggering remediation.

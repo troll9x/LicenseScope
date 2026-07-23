@@ -1,4 +1,4 @@
-# Báo cáo WinLic
+# Báo cáo LicenseScope
 
 Reports are user data and never belong in release bundles or SBOM build drops.
 

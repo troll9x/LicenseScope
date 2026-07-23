@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "products": [
+    {
+      "scannerId": "adobe.desktop",
+      "vendor": "Adobe",
+      "productName": "Adobe Photoshop 2025",
+      "productVersion": "26.0",
+      "status": "Unlicensed",
+      "licenseType": "NamedUser",
+      "confidence": "High",
+      "expirationDate": "",
+      "warnings": [
+        "Không tìm thấy bản ghi quyền sử dụng hợp lệ trong dữ liệu mô phỏng."
+      ]
+    },
+    {
+      "scannerId": "autodesk.desktop",
+      "vendor": "Autodesk",
+      "productName": "Autodesk AutoCAD 2025",
+      "productVersion": "2025",
+      "status": "NeedsOnlineVerification",
+      "licenseType": "UserLicensing",
+      "confidence": "Medium",
+      "expirationDate": "",
+      "warnings": [
+        "Cần xác minh thuê bao Autodesk trực tuyến."
+      ]
+    },
+    {
+      "scannerId": "trimble.sketchup",
+      "vendor": "Trimble",
+      "productName": "SketchUp Pro 2025",
+      "productVersion": "2025",
+      "status": "Unknown",
+      "licenseType": "Subscription",
+      "confidence": "Low",
+      "expirationDate": "",
+      "warnings": [
+        "Không có bằng chứng cục bộ đủ mạnh để kết luận trạng thái bản quyền."
+      ]
+    }
+  ]
+}

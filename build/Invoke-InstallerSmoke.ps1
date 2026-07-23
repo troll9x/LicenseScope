@@ -15,9 +15,9 @@ if ($Production) {
     if (-not $OutputDirectory) { throw 'OutputDirectory is required for production smoke.' }
     New-Item -ItemType Directory -Force $OutputDirectory | Out-Null
     $resultPath = Join-Path $OutputDirectory ("$($ProductionAction.ToLowerInvariant())-result.json")
-    $installPath = Join-Path $env:ProgramFiles 'WinLic'
-    $uninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{9DF7FE16-6903-4B48-98FB-866D77B31C7A}_is1'
-    $uninstallKey32 = 'Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{9DF7FE16-6903-4B48-98FB-866D77B31C7A}_is1'
+    $installPath = Join-Path $env:ProgramFiles 'LicenseScope'
+    $uninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{0C329754-97C0-45BE-8664-347B26EDA0E0}_is1'
+    $uninstallKey32 = 'Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{0C329754-97C0-45BE-8664-347B26EDA0E0}_is1'
     if ($ProductionAction -eq 'Install') {
         if (-not (Test-Path -LiteralPath $SetupPath -PathType Leaf)) { throw 'Production SetupPath was not found.' }
         $logPath = Join-Path $OutputDirectory 'production-install.log'
@@ -30,8 +30,8 @@ if ($Production) {
             action='Install'; exitCode=$process.ExitCode; elevated=$true; installPath=$installPath
             uninstallEntryFound=($null -ne $entry); uninstallEntryCount=$entries.Count; displayVersion=$entry.DisplayVersion
             payload=$manifest.payload; frameworkInstalledBySetup=$manifest.frameworkInstalledBySetup
-            guiExists=(Test-Path (Join-Path $installPath 'WinLicApp.exe'))
-            cliExists=(Test-Path (Join-Path $installPath 'WinLicAudit.Cli.exe'))
+            guiExists=(Test-Path (Join-Path $installPath 'LicenseScope.App.exe'))
+            cliExists=(Test-Path (Join-Path $installPath 'LicenseScope.Cli.exe'))
         } | ConvertTo-Json | Set-Content $resultPath -Encoding UTF8
         if ($process.ExitCode -notin 0,1641,3010 -or $entries.Count -ne 1 -or $manifest.payload -ne 'x64' -or $manifest.frameworkInstalledBySetup) { throw 'Production installation verification failed.' }
     } else {
@@ -50,7 +50,7 @@ if ($Production) {
     exit 0
 }
 
-$name = "WinLic-Smoke-$ExpectedPayload"
+$name = "LicenseScope-Smoke-$ExpectedPayload"
 $buildArgs = @{ SkipTests = $true; TestInstallMode = $true; OutputBaseFilename = $name }
 if ($ExpectedPayload -eq 'x86') { $buildArgs.TestForceX86 = $true }
 & (Join-Path $PSScriptRoot 'Build-Installer.ps1') @buildArgs
@@ -58,14 +58,17 @@ if ($LASTEXITCODE -ne 0) { throw 'Smoke Setup build failed.' }
 $setup = Join-Path $repo "artifacts\installer\$name.exe"
 $install = Join-Path $repo "artifacts\smoke\$ExpectedPayload\app"
 $reports = Join-Path $repo "artifacts\smoke\$ExpectedPayload\reports"
+$protectedWinLic = Join-Path $repo "artifacts\smoke\$ExpectedPayload\protected-winlic"
+$protectedWinLicCanary = Join-Path $protectedWinLic 'coexistence.canary'
 $log = Join-Path $repo "artifacts\smoke\$ExpectedPayload\install.log"
-New-Item -ItemType Directory -Force (Split-Path $install -Parent),$reports | Out-Null
+New-Item -ItemType Directory -Force (Split-Path $install -Parent),$reports,$protectedWinLic | Out-Null
+Set-Content -LiteralPath $protectedWinLicCanary -Value 'WinLic coexistence fixture: do not touch' -Encoding ASCII
 $p = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install", "/LOG=$log") -Wait -PassThru
 if ($p.ExitCode -notin 0,1641,3010) { throw "Smoke install failed: $($p.ExitCode)" }
 $manifest = Get-Content (Join-Path $install 'installation-manifest.json') -Raw | ConvertFrom-Json
 if ($manifest.payload -ne $ExpectedPayload) { throw "Expected $ExpectedPayload, installed $($manifest.payload)." }
 if ($manifest.frameworkInstalledBySetup) { throw 'Smoke unexpectedly invoked the framework prerequisite.' }
-$cli = Join-Path $install 'WinLicAudit.Cli.exe'
+$cli = Join-Path $install 'LicenseScope.Cli.exe'
 $version = & $cli --version
 if ($LASTEXITCODE -ne 0 -or -not $version) { throw 'Installed CLI startup failed.' }
 $auditOutput = & $cli audit --all --format json,csv,html --output $reports --overwrite 2>&1
@@ -74,12 +77,12 @@ if ($auditExit -notin 0,1,2) { throw "Installed CLI audit failed: $auditExit`n$a
 foreach ($extension in 'json','csv','html') {
     if (-not (Get-ChildItem $reports -Filter "*.$extension" -File)) { throw "Missing $extension report." }
 }
-$gui = Start-Process -FilePath (Join-Path $install 'WinLicApp.exe') -PassThru
+$gui = Start-Process -FilePath (Join-Path $install 'LicenseScope.App.exe') -PassThru
 Start-Sleep -Seconds 3
 if ($gui.HasExited) { throw "Installed GUI exited during startup ($($gui.ExitCode))." }
 $gui.CloseMainWindow() | Out-Null
 if (-not $gui.WaitForExit(5000)) { $gui.Kill(); $gui.WaitForExit() }
-$settingsDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'WinLic'
+$settingsDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'LicenseScope'
 New-Item -ItemType Directory -Force $settingsDir | Out-Null
 $sentinel = Join-Path $settingsDir 'phase9-preservation.sentinel'
 Set-Content $sentinel 'preserve-on-uninstall' -Encoding ASCII
@@ -90,9 +93,10 @@ if ((Test-Path $install) -and (Get-ChildItem $install -Force)) {
     Start-Sleep -Seconds 3
     try { Remove-Item -LiteralPath $install -Recurse -Force -ErrorAction Stop } catch { throw "Installed files remain locked after uninstall: $($_.Exception.Message)" }
 }
-$uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8E9E3612-C2B0-4A58-ACB4-8D1BEA0FE519}_is1'
+$uninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{98FB3801-EC81-49A7-987A-7742D6D01687}_is1'
 if (Test-Path $uninstallKey) { throw 'Uninstall registry entry remains.' }
 if (Test-Path $install) { Remove-Item -LiteralPath $install -Force }
 if (-not (Test-Path $sentinel)) { throw 'User settings were removed by uninstall.' }
+if (-not (Test-Path -LiteralPath $protectedWinLicCanary)) { throw 'Protected WinLic coexistence canary was modified or removed.' }
 Remove-Item -LiteralPath $sentinel -Force
-Write-Host "Smoke $ExpectedPayload passed; CLI audit exit=$auditExit; reports=json,csv,html; settings preserved."
+Write-Host "Smoke $ExpectedPayload passed; CLI audit exit=$auditExit; reports=json,csv,html; License Scope settings and WinLic canary preserved."

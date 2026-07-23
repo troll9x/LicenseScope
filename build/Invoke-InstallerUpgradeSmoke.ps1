@@ -1,10 +1,10 @@
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $dir = Join-Path $repo 'artifacts\smoke\upgrade\app'
-& "$PSScriptRoot\Build-Installer.ps1" -SkipTests -TestInstallMode -VersionOverride 0.9.0.0 -ArtifactSubdirectory upgrade-old -OutputBaseFilename WinLic-Old
-& "$PSScriptRoot\Build-Installer.ps1" -SkipTests -TestInstallMode -VersionOverride 1.0.0.0 -ArtifactSubdirectory upgrade-new -OutputBaseFilename WinLic-New
-$old = Join-Path $repo 'artifacts\upgrade-old\WinLic-Old.exe'
-$new = Join-Path $repo 'artifacts\upgrade-new\WinLic-New.exe'
+& "$PSScriptRoot\Build-Installer.ps1" -SkipTests -TestInstallMode -VersionOverride 0.9.0.0 -ArtifactSubdirectory upgrade-old -OutputBaseFilename LicenseScope-Old
+& "$PSScriptRoot\Build-Installer.ps1" -SkipTests -TestInstallMode -VersionOverride 1.0.0.0 -ArtifactSubdirectory upgrade-new -OutputBaseFilename LicenseScope-New
+$old = Join-Path $repo 'artifacts\upgrade-old\LicenseScope-Old.exe'
+$new = Join-Path $repo 'artifacts\upgrade-new\LicenseScope-New.exe'
 New-Item -ItemType Directory -Force (Split-Path $dir -Parent) | Out-Null
 function Install([string]$Setup) {
   $p=Start-Process $Setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$dir") -Wait -PassThru
