@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -25,7 +23,6 @@ namespace LicenseScope.App
         private IReadOnlyList<string> _fullProductKeys = Array.Empty<string>();
         private readonly KmsManagementService _kmsManagement = new KmsManagementService();
         private readonly SoftwareUninstallService _softwareUninstall = new SoftwareUninstallService();
-        private readonly SimulationAuditLoader _simulationLoader = new SimulationAuditLoader();
         private bool _revealConfirmed;
 
         public MainWindow()
@@ -244,7 +241,6 @@ namespace LicenseScope.App
         {
             var product = (sender as FrameworkElement)?.DataContext as LicenseResult;
             if (product == null || !product.Installed || product.IsLicensed == true ||
-                product.ErrorCode.Equals(SimulationAuditLoader.SimulationMarker, StringComparison.Ordinal) ||
                 product.ScannerId.Equals("microsoft.windows", StringComparison.OrdinalIgnoreCase))
                 return;
 
@@ -327,48 +323,6 @@ namespace LicenseScope.App
                         : MessageBoxImage.Error);
             }
             StatusText.Text = message;
-        }
-
-        private void SimulationScan_Click(object sender, RoutedEventArgs e)
-        {
-            var samplesDirectory = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "Samples");
-            var dialog = new OpenFileDialog
-            {
-                Title = "Chọn tệp quét giả lập",
-                Filter = "Tệp giả lập License Scope (*.json)|*.json|Tất cả tệp (*.*)|*.*",
-                InitialDirectory = Directory.Exists(samplesDirectory)
-                    ? samplesDirectory
-                    : AppDomain.CurrentDomain.BaseDirectory,
-                FileName = "license-audit-simulation.json",
-                CheckFileExists = true
-            };
-            if (dialog.ShowDialog(this) != true) return;
-
-            try
-            {
-                var result = _simulationLoader.Load(dialog.FileName);
-                DisplayAuditResult(result);
-                ScanProgress.Value = 100;
-                StatusText.Text = "Đã nạp " + result.Products.Count +
-                                  " sản phẩm mô phỏng. Không có dữ liệu hệ thống thật được quét.";
-                ResultsGrid.SelectedIndex = result.Products.Count > 0 ? 0 : -1;
-            }
-            catch (Exception ex) when (
-                ex is IOException ||
-                ex is SerializationException ||
-                ex is InvalidDataException ||
-                ex is ArgumentException)
-            {
-                StatusText.Text = "Không thể đọc tệp giả lập: " + ex.Message;
-                MessageBox.Show(
-                    this,
-                    StatusText.Text,
-                    "Tệp giả lập không hợp lệ",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
         }
 
         private async void CrackTrace_Click(object sender, RoutedEventArgs e)
@@ -526,7 +480,6 @@ namespace LicenseScope.App
             CheckKmsButton.IsEnabled = !running;
             ClearKmsButton.IsEnabled = !running;
             ThirdPartyCheckButton.IsEnabled = !running;
-            SimulationScanButton.IsEnabled = !running;
             CrackTraceButton.IsEnabled = !running;
             DeepForensicCheckBox.IsEnabled = !running;
             ResultsGrid.IsEnabled = !running;

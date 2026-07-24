@@ -51,14 +51,11 @@ function Copy-Payload([string]$Architecture, [string]$Destination) {
     foreach ($source in $sources) {
         Get-ChildItem -LiteralPath $source -File | Where-Object { $_.Extension -in '.exe','.dll','.config' } | Copy-Item -Destination $Destination -Force
     }
-    $sampleSource = Join-Path $repo "LicenseScope.App\bin\$Configuration\net48\Samples"
-    $sampleDestination = Join-Path $Destination 'Samples'
-    Assert-Condition (Test-Path -LiteralPath $sampleSource -PathType Container) "Samples directory missing from $Architecture application output."
-    Copy-Item -LiteralPath $sampleSource -Destination $sampleDestination -Recurse -Force
     foreach ($required in 'LicenseScope.App.exe','LicenseScope.Cli.exe') { Assert-Condition (Test-Path (Join-Path $Destination $required)) "$required missing from $Architecture payload." }
-    Assert-Condition (Test-Path (Join-Path $sampleDestination 'license-audit-simulation.json')) "Simulation fixture missing from $Architecture payload."
     $forbidden = Get-ChildItem $Destination -Recurse -File | Where-Object { $_.Extension -in '.pdb','.cs','.ps1','.trx' -or $_.Name -match 'Tests' }
     Assert-Condition ($null -eq $forbidden) "$Architecture payload contains forbidden files."
+    $simulationArtifacts = Get-ChildItem $Destination -Recurse -Force | Where-Object { $_.Name -match '(?i)(simulation|fixture)' }
+    Assert-Condition ($null -eq $simulationArtifacts) "$Architecture production payload contains simulation artifacts."
     $peTool = Join-Path $repo 'build\Get-PEArchitecture.ps1'
     $guiMachine = & $peTool (Join-Path $Destination 'LicenseScope.App.exe')
     $cliMachine = & $peTool (Join-Path $Destination 'LicenseScope.Cli.exe')

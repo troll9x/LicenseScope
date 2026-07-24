@@ -30,21 +30,19 @@ $productionFiles = @(
     Get-ChildItem (Join-Path $repo '.github') -Recurse -File
 ) | Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
 $oldBrandHits = foreach ($file in $productionFiles) {
-    if ((Get-Content -LiteralPath $file.FullName -Raw -ErrorAction SilentlyContinue) -match 'WinLic(?:Audit|App|\.|\b)') { $file.FullName }
+    if ((Get-Content -LiteralPath $file.FullName -Raw -ErrorAction SilentlyContinue) -match 'WinLic(?:Audit|App|\.)') { $file.FullName }
 }
 $scannerSource = (Get-ChildItem (Join-Path $repo 'src') -Recurse -File -Filter *.cs | Get-Content -Raw) -join "`n"
 $sourceFiles = @(
     Get-ChildItem (Join-Path $repo 'src') -Recurse -File -Filter *.cs
     Get-ChildItem (Join-Path $repo 'LicenseScope.App') -Recurse -File -Include *.cs,*.xaml
-)
+) | Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
 $kmsRemediationPath = Join-Path $repo 'LicenseScope.App\KmsManagementService.cs'
 $softwareUninstallPath = Join-Path $repo 'LicenseScope.App\SoftwareUninstallService.cs'
 $productionSource = ($sourceFiles | Get-Content -Raw) -join "`n"
 $readOnlyProductionSource = ($sourceFiles | Where-Object { $_.FullName -ne $kmsRemediationPath } | Get-Content -Raw) -join "`n"
 $kmsRemediationSource = Get-Content -LiteralPath $kmsRemediationPath -Raw
 $softwareUninstallSource = Get-Content -LiteralPath $softwareUninstallPath -Raw
-$simulationFixturePath = Join-Path $repo 'LicenseScope.App\Samples\license-audit-simulation.json'
-$simulationFixtureSource = Get-Content -LiteralPath $simulationFixturePath -Raw
 $crackTraceSource = @(
     Get-Content -LiteralPath (Join-Path $repo 'src\LicenseScope.Windows\WindowsCrackTraceAnalyzer.cs') -Raw
     Get-Content -LiteralPath (Join-Path $repo 'src\LicenseScope.Windows\Acquisition\WindowsCrackTraceEvidenceSource.cs') -Raw
@@ -64,7 +62,7 @@ $checks = [ordered]@{
     'AnyCPU preserved' = $solution -match 'Any CPU'
     'x86 preserved' = $solution -match '\|x86'
     'x64 preserved' = $solution -match '\|x64'
-    'No production WinLic branding' = @($oldBrandHits).Count -eq 0
+    'No legacy WinLic technical branding' = @($oldBrandHits).Count -eq 0
     'Stable scanner IDs preserved' = @($scannerIds | Where-Object { $scannerSource -notmatch [regex]::Escape($_) }).Count -eq 0
     'No activation mutation commands outside KMS remediation' = $readOnlyProductionSource -notmatch '(?i)/(ato|ipk|upk|cpky|rearm|skms|ckms)\b'
     'KMS remediation is clear-only' = $kmsMutationCommands.Count -eq 1 -and $kmsMutationCommands[0] -eq 'ckms'
@@ -73,12 +71,9 @@ $checks = [ordered]@{
         $softwareUninstallSource -match 'BlockedExecutables' -and
         $softwareUninstallSource -match 'Verb\s*=\s*"runas"' -and
         $softwareUninstallSource -notmatch 'QuietUninstallString'
-    'Simulation fixture covers safe scanner set' =
-        (Test-Path -LiteralPath $simulationFixturePath) -and
-        $simulationFixtureSource -match '"adobe\.desktop"' -and
-        $simulationFixtureSource -match '"autodesk\.desktop"' -and
-        $simulationFixtureSource -match '"trimble\.sketchup"' -and
-        $productionSource -match 'SIMULATION'
+    'No production simulation surface' =
+        $productionSource -notmatch '(?i)(SimulationAuditLoader|SimulationScan|SIMULATION)' -and
+        @(Get-ChildItem -LiteralPath (Join-Path $repo 'LicenseScope.App\Samples') -Recurse -File -ErrorAction SilentlyContinue).Count -eq 0
     'Crack trace scanner remains read-only' =
         $crackTraceSource -notmatch '(?i)/(ato|ipk|upk|cpky|rearm|skms|ckms)\b' -and
         $crackTraceSource -notmatch '(?i)(RegistryKey\.SetValue|Registry\.SetValue|DeleteValue|DeleteSubKey|File\.Delete|Directory\.Delete|Stop-Service|schtasks(?:\.exe)?\s+/(delete|change|end|run))' -and

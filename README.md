@@ -96,9 +96,6 @@ Mã thoát của lệnh audit:
 | 5 | Không thể ghi báo cáo |
 | 6 | Người dùng hủy |
 
-Để thử giao diện mà không thay đổi máy, chọn **Quét file giả lập** và mở
-`Samples\license-audit-simulation.json` trong thư mục cài đặt.
-
 ## Quy tắc an toàn và riêng tư
 
 Luồng audit là offline và chỉ đọc. Nó không cài hoặc xóa khóa sản phẩm, không kích

@@ -64,9 +64,6 @@
             <Button x:Name="ThirdPartyCheckButton" Content="Kiểm tra kích hoạt bên thứ ba"
                     Width="205" Height="34" Margin="8,0,0,0"
                     Click="CheckThirdParty_Click"/>
-            <Button x:Name="SimulationScanButton" Content="Quét file giả lập"
-                    Width="145" Height="34" Margin="8,0,0,0"
-                    Click="SimulationScan_Click"/>
             <Button x:Name="CrackTraceButton" Content="Phân tích dấu vết crack"
                     Width="175" Height="34" Margin="8,0,0,0"
                     Click="CrackTrace_Click"
@@ -113,9 +110,6 @@
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding ScannerId}" Value="microsoft.windows">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding ErrorCode}" Value="SIMULATION">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </DataTrigger>
                                         </Style.Triggers>

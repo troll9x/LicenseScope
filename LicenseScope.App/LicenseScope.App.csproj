@@ -22,12 +22,6 @@
   <ItemGroup>
     <Resource Include="licensescope.ico" />
     <Resource Include="licensescope_256.png" />
-    <Content Include="Samples\license-audit-simulation.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Samples\README.md">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
