@@ -92,7 +92,27 @@
                 <DataGridTextColumn Header="Khóa sản phẩm" Binding="{Binding PartialProductKey}" Width="210"/>
                 <DataGridTextColumn Header="Độ tin cậy" Binding="{Binding Confidence}" Width="100"/>
                 <DataGridTextColumn Header="Hết hạn" Binding="{Binding ExpirationDate}" Width="145"/>
-                <DataGridTextColumn Header="Cảnh báo" Binding="{Binding Warnings.Count}" Width="80"/>
+                <DataGridTemplateColumn Header="Phát hiện vi phạm" Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock HorizontalAlignment="Center"
+                                       FontFamily="Segoe UI Semibold">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="KHÔNG"/>
+                                        <Setter Property="Foreground" Value="#166534"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLicensed}" Value="False">
+                                                <Setter Property="Text" Value="CÓ"/>
+                                                <Setter Property="Foreground" Value="#b91c1c"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Header="Xử lý" Width="125">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
