@@ -19,12 +19,12 @@ namespace LicenseScope.Reporting
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(path)) return Fail("Output path is required.");
+                if (string.IsNullOrWhiteSpace(path)) return Fail("Cần chỉ định đường dẫn đầu ra.");
                 var full = Path.GetFullPath(path);
                 var directory = Path.GetDirectoryName(full);
-                if (string.IsNullOrWhiteSpace(directory)) return Fail("Invalid output path.");
+                if (string.IsNullOrWhiteSpace(directory)) return Fail("Đường dẫn đầu ra không hợp lệ.");
                 Directory.CreateDirectory(directory);
-                if (File.Exists(full) && !overwrite) return Fail("Output file already exists.");
+                if (File.Exists(full) && !overwrite) return Fail("Tệp đầu ra đã tồn tại.");
                 var temporary = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
                 try
                 {
@@ -41,8 +41,8 @@ namespace LicenseScope.Reporting
                     if (File.Exists(temporary)) File.Delete(temporary);
                 }
             }
-            catch (OperationCanceledException) { return Fail("Report writing was cancelled."); }
-            catch (Exception ex) { return Fail("Report could not be written (" + ex.GetType().Name + ")."); }
+            catch (OperationCanceledException) { return Fail("Đã hủy ghi báo cáo."); }
+            catch (Exception ex) { return Fail("Không thể ghi báo cáo (" + ex.GetType().Name + ")."); }
         }
 
         private static ReportWriteResult Fail(string message) =>
@@ -96,7 +96,7 @@ namespace LicenseScope.Reporting
             CancellationToken token)
         {
             if (options == null)
-                return Task.FromResult(new ReportWriteResult { ErrorMessage = "Options are required." });
+                return Task.FromResult(new ReportWriteResult { ErrorMessage = "Cần cung cấp tùy chọn." });
             var snapshot = _sanitizer.CreateReportSnapshot(result, options);
             return ReportFile.WriteAsync(
                 options.OutputPath,
@@ -194,6 +194,10 @@ namespace LicenseScope.Reporting
                    analysis.TraceDetected.ToString().ToLowerInvariant() +
                    ",\"provenanceVerified\":" +
                    analysis.ProvenanceVerified.ToString().ToLowerInvariant() +
+                   ",\"labels\":{\"scanCompleted\":\"Quét hoàn tất\"" +
+                   ",\"activationDetected\":\"Phát hiện kích hoạt\"" +
+                   ",\"traceDetected\":\"Phát hiện dấu vết\"" +
+                   ",\"provenanceVerified\":\"Xác minh nguồn gốc giấy phép\"}" +
                    ",\"detectionCoverage\":[" + coverage + "]" +
                    ",\"uncheckedSourceDetails\":[" +
                    string.Join(",", analysis.BlindSpots.Select(Escape.Json)) + "]" +
@@ -214,7 +218,7 @@ namespace LicenseScope.Reporting
         protected override string Render(SanitizedAuditReport report, ReportWriteOptions options)
         {
             var builder = new StringBuilder(
-                "ScanTime,ScannerId,Vendor,ProductName,ProductVersion,Installed,Status,IsLicensed,LicenseType,ExpirationDate,Confidence,Warnings\r\n");
+                "Thời điểm quét,Mã bộ quét,Hãng,Sản phẩm,Phiên bản,Đã cài đặt,Trạng thái,Có giấy phép,Loại giấy phép,Ngày hết hạn,Độ tin cậy,Cảnh báo\r\n");
             foreach (var product in report.Products)
                 builder.AppendLine(string.Join(",", new[]
                 {
@@ -223,28 +227,30 @@ namespace LicenseScope.Reporting
                     Escape.Csv(product.Vendor),
                     Escape.Csv(product.ProductName),
                     Escape.Csv(product.ProductVersion),
-                    Escape.Csv(product.Installed.ToString()),
-                    Escape.Csv(product.Status.ToString()),
-                    Escape.Csv(product.IsLicensed?.ToString() ?? string.Empty),
+                    Escape.Csv(ReportVietnamese.YesNo(product.Installed)),
+                    Escape.Csv(ReportVietnamese.Status(product.Status)),
+                    Escape.Csv(product.IsLicensed.HasValue
+                        ? ReportVietnamese.YesNo(product.IsLicensed.Value)
+                        : string.Empty),
                     Escape.Csv(product.LicenseType),
                     Escape.Csv(product.ExpirationDate?.ToString("o") ?? string.Empty),
-                    Escape.Csv(product.Confidence.ToString()),
+                    Escape.Csv(ReportVietnamese.Confidence(product.Confidence)),
                     Escape.Csv(string.Join(" | ", product.Warnings))
                 }));
             if (report.CrackTraceAnalysis != null)
             {
                 builder.AppendLine();
                 builder.AppendLine(
-                    "ScanCompleted,ActivationDetected,TraceDetected,ProvenanceVerified,DetectionCoverage,UncheckedSourceDetails,Evidence,CrackTraceSummary");
+                    "Quét hoàn tất,Phát hiện kích hoạt,Phát hiện dấu vết,Xác minh nguồn gốc giấy phép,Phạm vi kiểm tra,Chi tiết nguồn chưa kiểm tra,Bằng chứng,Kết luận dấu vết");
                 builder.AppendLine(string.Join(",", new[]
                 {
-                    Escape.Csv(report.CrackTraceAnalysis.ScanCompleted.ToString()),
-                    Escape.Csv(report.CrackTraceAnalysis.ActivationDetected.ToString()),
-                    Escape.Csv(report.CrackTraceAnalysis.TraceDetected.ToString()),
-                    Escape.Csv(report.CrackTraceAnalysis.ProvenanceVerified.ToString()),
+                    Escape.Csv(ReportVietnamese.YesNo(report.CrackTraceAnalysis.ScanCompleted)),
+                    Escape.Csv(ReportVietnamese.YesNo(report.CrackTraceAnalysis.ActivationDetected)),
+                    Escape.Csv(ReportVietnamese.YesNo(report.CrackTraceAnalysis.TraceDetected)),
+                    Escape.Csv(ReportVietnamese.YesNo(report.CrackTraceAnalysis.ProvenanceVerified)),
                     Escape.Csv(string.Join(" | ",
                         report.CrackTraceAnalysis.DetectionCoverage.Select(x =>
-                            x.DisplayName + ": " + x.Checked))),
+                            x.DisplayName + ": " + ReportVietnamese.YesNo(x.Checked)))),
                     Escape.Csv(string.Join(" | ",
                         report.CrackTraceAnalysis.BlindSpots)),
                     Escape.Csv(string.Join(" | ",
@@ -252,15 +258,15 @@ namespace LicenseScope.Reporting
                     Escape.Csv(report.CrackTraceAnalysis.VerdictSummary)
                 }));
                 builder.AppendLine(
-                    "CrackTraceOrder,CrackTraceId,CrackTraceName,Completed,Matched,CrackTraceEvidence");
+                    "Thứ tự kiểm tra,Mã kiểm tra,Tên kiểm tra,Hoàn tất,Khớp dấu vết,Bằng chứng dấu vết");
                 foreach (var check in report.CrackTraceAnalysis.Checks.OrderBy(x => x.Order))
                     builder.AppendLine(string.Join(",", new[]
                     {
                         Escape.Csv(check.Order.ToString()),
                         Escape.Csv(check.Id),
                         Escape.Csv(check.DisplayName),
-                        Escape.Csv(check.Completed.ToString()),
-                        Escape.Csv(check.Matched.ToString()),
+                        Escape.Csv(ReportVietnamese.YesNo(check.Completed)),
+                        Escape.Csv(ReportVietnamese.YesNo(check.Matched)),
                         Escape.Csv(string.Join(" | ", check.Evidence))
                     }));
             }
@@ -280,13 +286,13 @@ namespace LicenseScope.Reporting
                 "<tr><td>" + Escape.Html(product.Vendor) + "</td><td>" +
                 Escape.Html(product.ProductName) + "</td><td>" +
                 Escape.Html(product.ProductVersion) + "</td><td>" +
-                Escape.Html(product.Status.ToString()) + "</td><td>" +
+                Escape.Html(ReportVietnamese.Status(product.Status)) + "</td><td>" +
                 Escape.Html(product.LicenseType) + "</td><td>" +
-                Escape.Html(product.Confidence.ToString()) + "</td><td>" +
+                Escape.Html(ReportVietnamese.Confidence(product.Confidence)) + "</td><td>" +
                 Escape.Html(string.Join("; ", product.Warnings)) + "</td></tr>"));
             var executions = string.Join("", report.ScannerExecutions.Select(execution =>
                 "<li>" + Escape.Html(execution.ScannerId) + ": " +
-                (execution.WasSuccessful ? "Success" : "Failed") + " " +
+                (execution.WasSuccessful ? "Thành công" : "Thất bại") + " " +
                 Escape.Html(execution.ErrorMessage) + "</li>"));
             var crackTrace = RenderCrackTraceHtml(report.CrackTraceAnalysis);
             return "<!doctype html><html><head><meta charset=\"utf-8\">" +
@@ -302,17 +308,17 @@ namespace LicenseScope.Reporting
                    ".trace.unknown{color:#4b5563;border-left-color:#6b7280}" +
                    ".evidence{color:#333}.verdict{font-weight:700;border:2px solid currentColor;padding:10px}" +
                    "@media print{body{margin:0}.trace{color:#000!important;border-left-color:#000!important}}" +
-                   "</style></head><body><h1>License Scope</h1><p>Completed: " +
+                   "</style></head><body><h1>License Scope</h1><p>Hoàn tất: " +
                    Escape.Html(report.CompletedAt.ToString("o")) +
-                   (report.WasCancelled ? " — Cancelled" : string.Empty) +
-                   "</p><div class=\"cards\"><div class=\"card\">Total: " + summary.Total +
-                   "</div><div class=\"card\">Licensed: " + summary.Licensed +
-                   "</div><div class=\"card\">Attention: " + summary.Attention +
-                   "</div></div><table><thead><tr><th>Vendor</th><th>Product</th>" +
-                   "<th>Version</th><th>Status</th><th>License type</th><th>Confidence</th>" +
-                   "<th>Warnings</th></tr></thead><tbody>" + rows +
+                   (report.WasCancelled ? " — Đã hủy" : string.Empty) +
+                   "</p><div class=\"cards\"><div class=\"card\">Tổng số: " + summary.Total +
+                   "</div><div class=\"card\">Có giấy phép: " + summary.Licensed +
+                   "</div><div class=\"card\">Cần chú ý: " + summary.Attention +
+                   "</div></div><table><thead><tr><th>Hãng</th><th>Sản phẩm</th>" +
+                   "<th>Phiên bản</th><th>Trạng thái</th><th>Loại giấy phép</th><th>Độ tin cậy</th>" +
+                   "<th>Cảnh báo</th></tr></thead><tbody>" + rows +
                    "</tbody></table>" + crackTrace +
-                   "<h2>Scanner executions</h2><ul>" + executions + "</ul></body></html>";
+                   "<h2>Kết quả thực thi bộ quét</h2><ul>" + executions + "</ul></body></html>";
         }
 
         private static string RenderCrackTraceHtml(CrackTraceAnalysisResult? analysis)
@@ -323,32 +329,32 @@ namespace LicenseScope.Reporting
                 "\" data-check-id=\"" + Escape.Html(check.Id) + "\"><strong>" +
                 Escape.Html("[" + YesNo(check.Matched) + "] " +
                             check.Order + ". " + check.DisplayName +
-                            " | Completed: " + YesNo(check.Completed) +
-                            " | Matched: " + YesNo(check.Matched)) +
+                            " | Hoàn tất: " + YesNo(check.Completed) +
+                            " | Khớp dấu vết: " + YesNo(check.Matched)) +
                 "</strong><div class=\"evidence\">" +
                 string.Join("", check.Evidence.Select(item =>
                     "<div>- " + Escape.Html(item) + "</div>")) + "</div></div>"));
             var verdictClass = analysis.TraceDetected
                 ? "detected"
                 : "trace-not-found";
-            var coverage = "<h3>Coverage</h3><ul>" +
+            var coverage = "<h3>Phạm vi kiểm tra</h3><ul>" +
                            string.Join("", analysis.DetectionCoverage.Select(item =>
                                "<li>" + Escape.Html(item.DisplayName) + ": " +
                                Escape.Html(YesNo(item.Checked)) + "</li>")) +
                            "</ul>";
-            var blindSpots = "<h3>Unchecked source details</h3><ul>" +
+            var blindSpots = "<h3>Chi tiết nguồn chưa kiểm tra</h3><ul>" +
                              string.Join("", analysis.BlindSpots.Select(item =>
                                  "<li>" + Escape.Html(item) + "</li>")) +
                              "</ul>";
-            var evidence = "<h3>Evidence</h3><ul>" +
+            var evidence = "<h3>Bằng chứng</h3><ul>" +
                            string.Join("", analysis.Evidence.Select(item =>
                                "<li>" + Escape.Html(item) + "</li>")) +
                            "</ul>";
-            return "<section><h2>Phân tích dấu vết crack Windows</h2>" + checks +
-                   "<dl><dt>ScanCompleted</dt><dd>" + YesNo(analysis.ScanCompleted) +
-                   "</dd><dt>ActivationDetected</dt><dd>" + YesNo(analysis.ActivationDetected) +
-                   "</dd><dt>TraceDetected</dt><dd>" + YesNo(analysis.TraceDetected) +
-                   "</dd><dt>ProvenanceVerified</dt><dd>" + YesNo(analysis.ProvenanceVerified) +
+            return "<section><h2>Phân tích dấu vết kích hoạt Windows</h2>" + checks +
+                   "<dl><dt>Quét hoàn tất</dt><dd>" + YesNo(analysis.ScanCompleted) +
+                   "</dd><dt>Phát hiện kích hoạt</dt><dd>" + YesNo(analysis.ActivationDetected) +
+                   "</dd><dt>Phát hiện dấu vết</dt><dd>" + YesNo(analysis.TraceDetected) +
+                   "</dd><dt>Xác minh nguồn gốc giấy phép</dt><dd>" + YesNo(analysis.ProvenanceVerified) +
                    "</dd></dl>" + coverage + blindSpots + evidence +
                    "<p class=\"verdict trace " + verdictClass + "\">" +
                    Escape.Html("=> " + analysis.VerdictSummary) + "</p></section>";
@@ -357,6 +363,40 @@ namespace LicenseScope.Reporting
         private static string YesNo(bool value)
         {
             return value ? "CÓ" : "KHÔNG";
+        }
+    }
+
+    internal static class ReportVietnamese
+    {
+        public static string YesNo(bool value) => value ? "CÓ" : "KHÔNG";
+
+        public static string Status(LicenseStatus status)
+        {
+            switch (status)
+            {
+                case LicenseStatus.Licensed: return "Có giấy phép";
+                case LicenseStatus.Unlicensed: return "Không có giấy phép";
+                case LicenseStatus.Trial: return "Dùng thử";
+                case LicenseStatus.GracePeriod: return "Thời gian ân hạn";
+                case LicenseStatus.Expired: return "Đã hết hạn";
+                case LicenseStatus.NeedsSignIn: return "Cần đăng nhập";
+                case LicenseStatus.NeedsOnlineVerification: return "Cần xác minh trực tuyến";
+                case LicenseStatus.NotInstalled: return "Chưa cài đặt";
+                case LicenseStatus.Unsupported: return "Không được hỗ trợ";
+                case LicenseStatus.Error: return "Lỗi";
+                default: return "Không rõ";
+            }
+        }
+
+        public static string Confidence(ConfidenceLevel confidence)
+        {
+            switch (confidence)
+            {
+                case ConfidenceLevel.High: return "Cao";
+                case ConfidenceLevel.Medium: return "Trung bình";
+                case ConfidenceLevel.Low: return "Thấp";
+                default: return "Không có";
+            }
         }
     }
 }

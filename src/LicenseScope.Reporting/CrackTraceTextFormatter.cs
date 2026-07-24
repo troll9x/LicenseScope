@@ -22,7 +22,7 @@ namespace LicenseScope.Reporting
             {
                 new CrackTraceDisplayLine
                 {
-                    Text = "[PHÂN TÍCH - DẤU VẾT CRACK]",
+                    Text = "[PHÂN TÍCH DẤU VẾT KÍCH HOẠT]",
                     IsHeading = true
                 },
                 new CrackTraceDisplayLine()
@@ -33,15 +33,15 @@ namespace LicenseScope.Reporting
                 {
                     Text = "[" + YesNo(check.Matched) + "] " + check.Order + ". " +
                            check.DisplayName.PadRight(20) +
-                           " | Completed: " + YesNo(check.Completed) +
-                           " | Matched: " + YesNo(check.Matched),
+                           " | Hoàn tất: " + YesNo(check.Completed) +
+                           " | Khớp dấu vết: " + YesNo(check.Matched),
                     Status = check.Status
                 });
                 if (check.Evidence.Count > 0)
                 {
                     lines.Add(new CrackTraceDisplayLine
                     {
-                        Text = "    Evidence:",
+                        Text = "    Bằng chứng:",
                         Status = check.Status
                     });
                     foreach (var evidence in check.Evidence)
@@ -55,28 +55,28 @@ namespace LicenseScope.Reporting
             lines.Add(new CrackTraceDisplayLine());
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "ScanCompleted: " + YesNo(analysis.ScanCompleted),
+                Text = "Quét hoàn tất: " + YesNo(analysis.ScanCompleted),
                 IsHeading = true
             });
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "ActivationDetected: " + YesNo(analysis.ActivationDetected),
+                Text = "Phát hiện kích hoạt: " + YesNo(analysis.ActivationDetected),
                 Status = VerdictStatus(analysis.TraceVerdict)
             });
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "TraceDetected: " + YesNo(analysis.TraceDetected),
+                Text = "Phát hiện dấu vết: " + YesNo(analysis.TraceDetected),
                 Status = VerdictStatus(analysis.TraceVerdict)
             });
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "ProvenanceVerified: " + YesNo(analysis.ProvenanceVerified),
+                Text = "Xác minh nguồn gốc giấy phép: " + YesNo(analysis.ProvenanceVerified),
                 Status = VerdictStatus(analysis.TraceVerdict)
             });
             lines.Add(new CrackTraceDisplayLine());
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "Coverage:",
+                Text = "Phạm vi kiểm tra:",
                 IsHeading = true
             });
             foreach (var coverage in analysis.DetectionCoverage)
@@ -93,7 +93,7 @@ namespace LicenseScope.Reporting
                 lines.Add(new CrackTraceDisplayLine());
                 lines.Add(new CrackTraceDisplayLine
                 {
-                    Text = "Unchecked source details:",
+                    Text = "Chi tiết nguồn chưa kiểm tra:",
                     IsHeading = true
                 });
                 foreach (var blindSpot in analysis.BlindSpots)
@@ -108,7 +108,7 @@ namespace LicenseScope.Reporting
                 lines.Add(new CrackTraceDisplayLine());
                 lines.Add(new CrackTraceDisplayLine
                 {
-                    Text = "Evidence:",
+                    Text = "Bằng chứng:",
                     IsHeading = true
                 });
                 foreach (var evidence in analysis.Evidence)

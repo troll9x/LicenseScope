@@ -1,36 +1,40 @@
 # Phân tích dấu vết kích hoạt Windows
 
-Nút **Phân tích dấu vết crack** chạy bảy nhóm kiểm tra chỉ đọc:
+Nút **Phân tích dấu vết kích hoạt** chạy bảy nhóm kiểm tra chỉ đọc:
 
-1. KMS Crack
-2. MAS / HWID
-3. KMS38 Hook
+1. Kích hoạt KMS trái phép
+2. Kích hoạt số MAS/HWID
+3. Can thiệp KMS38
 4. Logic bản quyền
 5. Thư mục công cụ
-6. Tác vụ ẩn (Scheduled Tasks)
-7. Can thiệp Registry
+6. Tác vụ ẩn
+7. Can thiệp sổ đăng ký
 
 ## Kết quả nhị phân
 
-Analyzer không suy đoán hợp pháp hay trái phép. Nó ghi nhận bốn sự kiện khách
+Bộ phân tích không suy đoán hợp pháp hay trái phép. Nó ghi nhận bốn sự kiện khách
 quan dưới dạng `true/false` hoặc `CÓ/KHÔNG`:
 
-- `ScanCompleted`: các nguồn bắt buộc của chế độ quét đã đọc xong hay chưa.
-- `ActivationDetected`: Windows có báo trạng thái kích hoạt hay không.
-- `TraceDetected`: có ít nhất một bằng chứng khớp allowlist hay không.
-- `ProvenanceVerified`: có bằng chứng xác minh nguồn gốc license hay không.
+- **Quét hoàn tất** (`scanCompleted` trong JSON): các nguồn bắt buộc của chế độ
+  quét đã đọc xong hay chưa.
+- **Phát hiện kích hoạt** (`activationDetected`): Windows có báo trạng thái
+  kích hoạt hay không.
+- **Phát hiện dấu vết** (`traceDetected`): có ít nhất một bằng chứng khớp danh
+  sách cho phép hay không.
+- **Xác minh nguồn gốc giấy phép** (`provenanceVerified`): có bằng chứng xác
+  minh nguồn gốc giấy phép hay không.
 
-`TraceDetected: CÓ` luôn đi kèm `Evidence` có cấu trúc:
+**Phát hiện dấu vết: CÓ** luôn đi kèm mục **Bằng chứng** có cấu trúc:
 
 `<scanner-id> | <nguồn>: <tên> [<đường dẫn>] -> <hành động>`
 
 Ví dụ:
 
-`scheduled-tasks | ScheduledTask: AutoKMS -> C:\Tools\AutoKMS.exe`
+`scheduled-tasks | Nguồn tác vụ đã lập lịch: AutoKMS -> hành động: C:\Tools\AutoKMS.exe`
 
-`TraceDetected: KHÔNG` có nghĩa chính xác là scanner không quan sát được bằng
-chứng khớp allowlist. Nếu một nguồn bắt buộc bị từ chối hoặc lỗi,
-`ScanCompleted` đồng thời là `KHÔNG`; lỗi không được biến thành tuyên bố máy
+**Phát hiện dấu vết: KHÔNG** có nghĩa chính xác là bộ quét không quan sát được
+bằng chứng khớp danh sách cho phép. Nếu một nguồn bắt buộc bị từ chối hoặc lỗi,
+**Quét hoàn tất** đồng thời là `KHÔNG`; lỗi không được biến thành tuyên bố máy
 không có dấu vết.
 
 Các nhãn suy diễn `SUSPICIOUS`, `HIGH_RISK`, `INCONCLUSIVE` và `SCAN_ERROR`
@@ -43,9 +47,9 @@ Scanner thường chỉ dùng WMI `SELECT`, Registry read-only,
 Scanner không kích hoạt, cài/gỡ key, rearm, xóa KMS, sửa task, dừng service,
 xóa file hoặc sửa Registry.
 
-## Deep forensic scan
+## Quét pháp chứng chuyên sâu
 
-Deep forensic scan tắt mặc định và chỉ chạy sau khi người dùng đồng ý rõ ràng.
+Quét pháp chứng chuyên sâu tắt mặc định và chỉ chạy sau khi người dùng đồng ý rõ ràng.
 Chế độ này chỉ đọc:
 
 - event log cấp phép Windows có liên quan;
@@ -56,8 +60,8 @@ Chế độ này chỉ đọc:
   quan.
 
 Không quét file người dùng, không upload dữ liệu và không xóa hoặc sửa dữ liệu.
-Nguồn không tồn tại hoặc bị từ chối được ghi bằng `Checked: false`; nếu nguồn đó
-được yêu cầu cho lần quét, `ScanCompleted` là `false`.
+Nguồn không tồn tại hoặc bị từ chối được ghi là **Đã kiểm tra: KHÔNG**; nếu
+nguồn đó được yêu cầu cho lần quét, **Quét hoàn tất** là `KHÔNG`.
 
 ## NoGenTicket
 
@@ -66,8 +70,9 @@ Nguồn không tồn tại hoặc bị từ chối được ghi bằng `Checked:
 `HKLM\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform`
 
 Microsoft tài liệu hóa giá trị này là policy **Turn off KMS Client Online AVS
-Validation**. Nếu giá trị tồn tại, analyzer báo khách quan
-`TraceDetected: true` và đưa đúng registry path/value vào `Evidence`; nó không
+Validation**. Nếu giá trị tồn tại, bộ phân tích báo khách quan
+**Phát hiện dấu vết: CÓ** và đưa đúng đường dẫn/giá trị sổ đăng ký vào mục
+**Bằng chứng**; nó không
 đổi sự kiện đó thành tuyên bố pháp lý về license.
 
 <https://learn.microsoft.com/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services#19-software-protection-platform>

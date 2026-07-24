@@ -103,8 +103,8 @@ namespace LicenseScope.Cli
                 }
                 if (!parsed.Valid)
                 {
-                    _console.WriteLine("Error: " + parsed.Error);
-                    _console.WriteLine("Use --help for usage.");
+                    _console.WriteLine("Lỗi: " + parsed.Error);
+                    _console.WriteLine("Dùng --help để xem hướng dẫn.");
                     return 4;
                 }
 
@@ -115,7 +115,7 @@ namespace LicenseScope.Cli
                 if (!assessment.CanRunAudit)
                 {
                     foreach (var reason in assessment.BlockingReasons)
-                        _console.WriteLine("Compatibility error: " + reason);
+                        _console.WriteLine("Lỗi tương thích: " + reason);
                     return environment.InstalledNetFrameworkVersion < new Version(4, 8) ? 8 : 7;
                 }
 
@@ -135,7 +135,7 @@ namespace LicenseScope.Cli
                     foreach (var product in consoleSnapshot.Products)
                         _console.WriteLine(
                             product.ScannerId + " | " + product.ProductName + " | " +
-                            product.Status + " | " + product.LicenseType);
+                            StatusName(product.Status) + " | " + product.LicenseType);
                     if (consoleSnapshot.CrackTraceAnalysis != null)
                         PrintCrackTrace(consoleSnapshot.CrackTraceAnalysis);
                 }
@@ -159,21 +159,21 @@ namespace LicenseScope.Cli
                         token).ConfigureAwait(false);
                     if (!written.Success)
                     {
-                        _console.WriteLine("Report failed: " + written.ErrorMessage);
+                        _console.WriteLine("Xuất báo cáo thất bại: " + written.ErrorMessage);
                         return 5;
                     }
-                    if (!parsed.Quiet) _console.WriteLine("Report saved: " + written.OutputPath);
+                    if (!parsed.Quiet) _console.WriteLine("Đã lưu báo cáo: " + written.OutputPath);
                 }
                 return ExitCode(result);
             }
             catch (OperationCanceledException)
             {
-                _console.WriteLine("Audit cancelled.");
+                _console.WriteLine("Đã hủy kiểm tra.");
                 return 6;
             }
             catch (Exception ex)
             {
-                _console.WriteLine("Audit failed (" + ex.GetType().Name + ").");
+                _console.WriteLine("Kiểm tra thất bại (" + ex.GetType().Name + ").");
                 return 3;
             }
         }
@@ -221,25 +221,26 @@ namespace LicenseScope.Cli
 
         private void PrintHelp()
         {
-            _console.WriteLine("LicenseScope.Cli — read-only license audit");
-            _console.WriteLine("Usage: LicenseScope.Cli.exe audit --all [options]");
+            _console.WriteLine("LicenseScope.Cli — kiểm tra giấy phép chỉ đọc");
+            _console.WriteLine("Cách dùng: LicenseScope.Cli.exe audit --all [tùy chọn]");
             _console.WriteLine("       LicenseScope.Cli.exe compatibility [--json]");
             _console.WriteLine(
-                "Options: --format json,csv,html  --output <directory>  " +
+                "Tùy chọn: --format json,csv,html  --output <thư_mục>  " +
                 "--include-evidence|--no-evidence  --include-machine-name  " +
                 "--deep-forensic-scan --consent-forensic-read  " +
                 "--overwrite  --quiet  --help  --version");
             _console.WriteLine(
-                "Audit includes seven-group Windows crack-trace analysis. " +
-                "Prefixes remain readable when terminal color is unavailable.");
+                "Kiểm tra gồm bảy nhóm phân tích dấu vết công cụ kích hoạt Windows. " +
+                "Các nhãn vẫn đọc được khi cửa sổ lệnh không hỗ trợ màu.");
             _console.WriteLine(
-                "Default output directory: .\\reports. Privacy defaults exclude " +
-                "machine name and mask keys/accounts.");
+                "Thư mục đầu ra mặc định: .\\reports. Mặc định riêng tư không xuất " +
+                "tên máy và che khóa/tài khoản.");
             _console.WriteLine(
-                "Exit codes: 0 compatible/no blocking license finding, " +
-                "1 unlicensed/expired, 2 incomplete, " +
-                "3 fatal, 4 arguments, 5 report, 6 cancelled, 7 unsupported " +
-                "OS/architecture, 8 framework insufficient, 9 compatibility unknown.");
+                "Mã thoát: 0 tương thích/không có phát hiện giấy phép chặn, " +
+                "1 không có giấy phép/đã hết hạn, 2 chưa hoàn tất, " +
+                "3 lỗi nghiêm trọng, 4 lỗi đối số, 5 lỗi báo cáo, 6 đã hủy, " +
+                "7 hệ điều hành/kiến trúc không được hỗ trợ, 8 thiếu framework, " +
+                "9 chưa xác định tương thích.");
         }
 
         private static Args Parse(string[] args)
@@ -258,7 +259,7 @@ namespace LicenseScope.Cli
             if (args.Length < 2 ||
                 !string.Equals(args[0], "audit", StringComparison.OrdinalIgnoreCase))
             {
-                result.Error = "Expected 'audit --all'.";
+                result.Error = "Cần dùng lệnh 'audit --all'.";
                 return result;
             }
             if (args.Contains("--help"))
@@ -268,7 +269,7 @@ namespace LicenseScope.Cli
             }
             if (!args.Contains("--all"))
             {
-                result.Error = "The audit command requires --all.";
+                result.Error = "Lệnh audit yêu cầu tùy chọn --all.";
                 return result;
             }
 
@@ -282,7 +283,7 @@ namespace LicenseScope.Cli
                     if (++index >= args.Length)
                     {
                         result.Valid = false;
-                        result.Error = "Missing format value.";
+                        result.Error = "Thiếu giá trị định dạng.";
                         break;
                     }
                     foreach (var format in args[index].Split(','))
@@ -290,7 +291,7 @@ namespace LicenseScope.Cli
                         if (format != "json" && format != "csv" && format != "html")
                         {
                             result.Valid = false;
-                            result.Error = "Invalid report format.";
+                            result.Error = "Định dạng báo cáo không hợp lệ.";
                             break;
                         }
                         if (!result.Formats.Contains(format)) result.Formats.Add(format);
@@ -301,7 +302,7 @@ namespace LicenseScope.Cli
                     if (++index >= args.Length)
                     {
                         result.Valid = false;
-                        result.Error = "Missing output path.";
+                        result.Error = "Thiếu đường dẫn đầu ra.";
                         break;
                     }
                     result.Output = Path.GetFullPath(args[index]);
@@ -318,7 +319,7 @@ namespace LicenseScope.Cli
                 else
                 {
                     result.Valid = false;
-                    result.Error = "Unknown option: " + argument;
+                    result.Error = "Tùy chọn không xác định: " + argument;
                     break;
                 }
             }
@@ -326,15 +327,33 @@ namespace LicenseScope.Cli
             {
                 result.Valid = false;
                 result.Error =
-                    "--deep-forensic-scan requires --consent-forensic-read.";
+                    "--deep-forensic-scan yêu cầu --consent-forensic-read.";
             }
             if (result.Valid && result.ForensicConsent && !result.DeepForensicScan)
             {
                 result.Valid = false;
                 result.Error =
-                    "--consent-forensic-read is only valid with --deep-forensic-scan.";
+                    "--consent-forensic-read chỉ hợp lệ khi dùng cùng --deep-forensic-scan.";
             }
             return result;
+        }
+
+        private static string StatusName(LicenseStatus status)
+        {
+            switch (status)
+            {
+                case LicenseStatus.Licensed: return "Có giấy phép";
+                case LicenseStatus.Unlicensed: return "Không có giấy phép";
+                case LicenseStatus.Trial: return "Dùng thử";
+                case LicenseStatus.GracePeriod: return "Thời gian ân hạn";
+                case LicenseStatus.Expired: return "Đã hết hạn";
+                case LicenseStatus.NeedsSignIn: return "Cần đăng nhập";
+                case LicenseStatus.NeedsOnlineVerification: return "Cần xác minh trực tuyến";
+                case LicenseStatus.NotInstalled: return "Chưa cài đặt";
+                case LicenseStatus.Unsupported: return "Không được hỗ trợ";
+                case LicenseStatus.Error: return "Lỗi";
+                default: return "Không rõ";
+            }
         }
 
         private sealed class Args

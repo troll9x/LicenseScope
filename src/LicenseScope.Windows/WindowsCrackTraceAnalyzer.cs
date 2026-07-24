@@ -47,7 +47,7 @@ namespace LicenseScope.Windows
                 {
                     if (!options.UserConsented)
                         throw new InvalidOperationException(
-                            "Deep forensic scan requires explicit user consent.");
+                            "Quét pháp chứng chuyên sâu cần sự đồng ý rõ ràng của người dùng.");
                     var deepSource = _source as IDeepCrackTraceEvidenceSource;
                     if (deepSource == null)
                     {
@@ -136,7 +136,7 @@ namespace LicenseScope.Windows
                     DetectionCoverage = ErrorCoverage(),
                     BlindSpots = new[]
                     {
-                        "Scan failed before detection coverage could be established."
+                        "Quét bị lỗi trước khi có thể xác định phạm vi kiểm tra."
                     },
                     Evidence = Array.Empty<string>(),
                     Confidence = 0,
@@ -156,7 +156,7 @@ namespace LicenseScope.Windows
             var suspiciousHost = IsSuspiciousKmsHost(activation.KmsHost);
             var loopback = IsLoopback(activation.KmsHost);
             if (!string.IsNullOrWhiteSpace(activation.KmsHost))
-                evidence.Add("KMS host configured: " + SanitizeHost(activation.KmsHost) +
+                evidence.Add("Máy chủ KMS đã cấu hình: " + SanitizeHost(activation.KmsHost) +
                              (activation.KmsPort.HasValue ? ":" + activation.KmsPort.Value : string.Empty));
 
             var active = snapshot.Services.Concat(snapshot.Processes)
@@ -168,23 +168,23 @@ namespace LicenseScope.Windows
 
             if ((suspiciousHost && active.Length > 0) || loopback && active.Length > 0 ||
                 active.Select(x => x.Source).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 2)
-                return Result(1, "kms-crack", "KMS Crack", CrackTraceStatus.Detected,
+                return Result(1, "kms-crack", "Kích hoạt KMS trái phép", CrackTraceStatus.Detected,
                     "Phát hiện nhiều dấu vết KMS không phù hợp với cấu hình doanh nghiệp thông thường.",
                     evidence, 90, strong: true, definitive: loopback && active.Any(x =>
                         x.Source == "Service" || x.Source == "Process"));
 
             if (suspiciousHost || active.Length > 0)
-                return Result(1, "kms-crack", "KMS Crack", CrackTraceStatus.Suspicious,
-                    "Quy tắc allowlist KMS khớp ít nhất một host hoặc artifact.",
+                return Result(1, "kms-crack", "Kích hoạt KMS trái phép", CrackTraceStatus.Suspicious,
+                    "Quy tắc KMS trong danh sách cho phép khớp ít nhất một máy chủ hoặc dấu vết.",
                     evidence, 60);
 
             if (!string.IsNullOrWhiteSpace(activation.KmsHost))
-                return Result(1, "kms-crack", "KMS Crack", CrackTraceStatus.TraceNotFound,
-                    "Đã quan sát cấu hình KMS hiện tại; không tìm thấy artifact allowlist đi kèm. Điều này không xác minh nguồn gốc kích hoạt.",
+                return Result(1, "kms-crack", "Kích hoạt KMS trái phép", CrackTraceStatus.TraceNotFound,
+                    "Đã quan sát cấu hình KMS hiện tại; không tìm thấy dấu vết đi kèm trong danh sách cho phép. Điều này không xác minh nguồn gốc kích hoạt.",
                     evidence, 70);
 
-            return Result(1, "kms-crack", "KMS Crack", CrackTraceStatus.TraceNotFound,
-                "Không tìm thấy cấu hình KMS hoặc artifact KMS khớp allowlist trong phép kiểm tra hiện tại.", evidence, 60,
+            return Result(1, "kms-crack", "Kích hoạt KMS trái phép", CrackTraceStatus.TraceNotFound,
+                "Không tìm thấy cấu hình KMS hoặc dấu vết KMS khớp danh sách cho phép trong phép kiểm tra hiện tại.", evidence, 60,
                 incomplete: HasUnavailable(snapshot, "Activation"));
         }
 
@@ -205,24 +205,24 @@ namespace LicenseScope.Windows
             var renewalTask = snapshot.Tasks.Any(x =>
                 Contains(x, "Activation-Renewal") && x.ActionMatched);
             if (renewalPath && renewalTask)
-                return Result(2, "mas-hwid", "MAS / HWID", CrackTraceStatus.Detected,
-                    "Phát hiện artifact và tác vụ gia hạn độc lập cùng khớp allowlist hiện có.",
+                return Result(2, "mas-hwid", "Kích hoạt số MAS/HWID", CrackTraceStatus.Detected,
+                    "Phát hiện dấu vết và tác vụ gia hạn độc lập cùng khớp danh sách cho phép hiện có.",
                     evidence, 85, strong: true);
 
             if (weakArtifacts.Select(x => x.Source).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 2)
-                return Result(2, "mas-hwid", "MAS / HWID", CrackTraceStatus.Suspicious,
-                    "Artifact MAS/HWID khớp allowlist ở ít nhất hai nguồn.",
+                return Result(2, "mas-hwid", "Kích hoạt số MAS/HWID", CrackTraceStatus.Suspicious,
+                    "Dấu vết MAS/HWID khớp danh sách cho phép ở ít nhất hai nguồn.",
                     evidence, 55);
 
             if (weakArtifacts.Length > 0)
-                return Result(2, "mas-hwid", "MAS / HWID", CrackTraceStatus.Suspicious,
-                    "Có ít nhất một artifact MAS/HWID khớp allowlist.",
+                return Result(2, "mas-hwid", "Kích hoạt số MAS/HWID", CrackTraceStatus.Suspicious,
+                    "Có ít nhất một dấu vết MAS/HWID khớp danh sách cho phép.",
                     evidence, 30);
 
             if (IsDigitalEntitlementPattern(snapshot.Activation))
                 evidence.Add(
-                    "Permanent Retail/OEM activation observed; digital-license provenance is not technically verifiable from current state.");
-            return Result(2, "mas-hwid", "MAS / HWID", CrackTraceStatus.TraceNotFound,
+                    "Đã quan sát kích hoạt Retail/OEM vĩnh viễn; trạng thái hiện tại không cho phép xác minh nguồn gốc giấy phép số.");
+            return Result(2, "mas-hwid", "Kích hoạt số MAS/HWID", CrackTraceStatus.TraceNotFound,
                 "Không tìm thấy dấu vết MAS/HWID có thể kiểm chứng trong các nguồn hiện đã kiểm tra; trạng thái kích hoạt số không chứng minh nguồn gốc.",
                 evidence, 45);
         }
@@ -241,22 +241,22 @@ namespace LicenseScope.Windows
                 Contains(x, "GenuineTicket") || Contains(x, "Activation-Renewal")) ||
                            snapshot.Tasks.Any(x => Contains(x, "KMS38"));
             if (expiryAnomaly)
-                evidence.Add("Activation expiration year: " +
-                             activation.ExpirationDate!.Value.Year + " (date alone is not conclusive).");
+                evidence.Add("Năm hết hạn kích hoạt: " +
+                             activation.ExpirationDate!.Value.Year + " (riêng ngày này không đủ để kết luận).");
             if (volumePermanent)
-                evidence.Add("Volume_KMSCLIENT channel reports permanent activation.");
+                evidence.Add("Kênh Volume_KMSCLIENT báo trạng thái kích hoạt vĩnh viễn.");
             if (artifact)
-                evidence.Add("A second KMS38-related artifact matched the repository allowlist.");
+                evidence.Add("Một dấu vết thứ hai liên quan đến KMS38 khớp danh sách cho phép.");
 
             if (expiryAnomaly && volumePermanent && artifact)
-                return Result(3, "kms38-hook", "KMS38 Hook", CrackTraceStatus.Detected,
-                    "Kết hợp thời hạn, kênh và artifact tạo thành nhiều tín hiệu độc lập.",
+                return Result(3, "kms38-hook", "Can thiệp KMS38", CrackTraceStatus.Detected,
+                    "Kết hợp thời hạn, kênh và dấu vết tạo thành nhiều tín hiệu độc lập.",
                     evidence, 90, strong: true);
             if (expiryAnomaly || volumePermanent || artifact)
-                return Result(3, "kms38-hook", "KMS38 Hook", CrackTraceStatus.Suspicious,
+                return Result(3, "kms38-hook", "Can thiệp KMS38", CrackTraceStatus.Suspicious,
                     "Có ít nhất một quy tắc KMS38 khớp dữ liệu quan sát được.",
                     evidence, 50);
-            return Result(3, "kms38-hook", "KMS38 Hook", CrackTraceStatus.TraceNotFound,
+            return Result(3, "kms38-hook", "Can thiệp KMS38", CrackTraceStatus.TraceNotFound,
                 "Không tìm thấy tổ hợp dấu vết KMS38 trong phạm vi kiểm tra hiện tại.", evidence, 55);
         }
 
@@ -265,37 +265,37 @@ namespace LicenseScope.Windows
             var activation = snapshot.Activation;
             var evidence = new List<string>();
             if (!string.IsNullOrWhiteSpace(activation.Channel))
-                evidence.Add("Activation channel: " + activation.Channel);
+                evidence.Add("Kênh kích hoạt: " + activation.Channel);
             if (activation.LicenseStatus.HasValue)
-                evidence.Add("License status code: " + activation.LicenseStatus.Value);
-            evidence.Add("Activation ID: " +
-                         (string.IsNullOrWhiteSpace(activation.ActivationId) ? "not available" : "present"));
+                evidence.Add("Mã trạng thái giấy phép: " + activation.LicenseStatus.Value);
+            evidence.Add("Mã kích hoạt: " +
+                         (string.IsNullOrWhiteSpace(activation.ActivationId) ? "không có dữ liệu" : "có"));
             if (!string.IsNullOrWhiteSpace(activation.PartialProductKey))
-                evidence.Add("Partial product key: " + activation.PartialProductKey);
-            evidence.Add("OEM firmware evidence: " +
-                         (activation.OemFirmwareKeyPresent ? "present" : "not observed"));
+                evidence.Add("Năm ký tự cuối khóa sản phẩm: " + activation.PartialProductKey);
+            evidence.Add("Bằng chứng OEM trong firmware: " +
+                         (activation.OemFirmwareKeyPresent ? "có" : "không quan sát thấy"));
             if (!string.IsNullOrWhiteSpace(activation.ProductName))
-                evidence.Add("Active edition: " +
+                evidence.Add("Phiên bản Windows đang kích hoạt: " +
                              SensitiveDataMasker.SanitizeDiagnosticText(activation.ProductName));
             if (!string.IsNullOrWhiteSpace(activation.FirmwareEdition))
-                evidence.Add("Firmware edition: " +
+                evidence.Add("Phiên bản Windows trong firmware: " +
                              SensitiveDataMasker.SanitizeDiagnosticText(activation.FirmwareEdition));
-            evidence.Add("Relevant SoftwareLicensingProduct records: " +
+            evidence.Add("Số bản ghi SoftwareLicensingProduct liên quan: " +
                          activation.Products.Count);
             foreach (var product in activation.Products)
             {
                 evidence.Add(
-                    "Licensing record: " +
+                    "Bản ghi cấp phép: " +
                     SensitiveDataMasker.SanitizeDiagnosticText(product.ProductName) +
-                    "; channel=" + product.Channel +
-                    "; status=" +
+                    "; kênh=" + product.Channel +
+                    "; trạng thái=" +
                     (product.LicenseStatus.HasValue
                         ? product.LicenseStatus.Value.ToString()
-                        : "unknown") +
-                    "; graceMinutes=" +
+                        : "không rõ") +
+                    "; phút ân hạn=" +
                     (product.GracePeriodRemaining.HasValue
                         ? product.GracePeriodRemaining.Value.ToString()
-                        : "unknown") +
+                        : "không rõ") +
                     (string.IsNullOrWhiteSpace(product.KmsHost)
                         ? string.Empty
                         : "; kms=" + SanitizeHost(product.KmsHost) +
@@ -304,13 +304,13 @@ namespace LicenseScope.Windows
                               : string.Empty)));
             }
             if (!string.IsNullOrWhiteSpace(activation.KmsHost))
-                evidence.Add("Current KMS endpoint: " +
+                evidence.Add("Điểm cuối KMS hiện tại: " +
                              SanitizeHost(activation.KmsHost) +
                              (activation.KmsPort.HasValue
                                  ? ":" + activation.KmsPort.Value
                                  : string.Empty));
             if (activation.ExpirationDate.HasValue)
-                evidence.Add("Current activation/KMS expiration: " +
+                evidence.Add("Thời điểm hết hạn kích hoạt/KMS hiện tại: " +
                              activation.ExpirationDate.Value.ToString("o"));
 
             var contradictory = activation.LicenseStatus == 1 && activation.IndicatesUnlicensed;
@@ -328,17 +328,17 @@ namespace LicenseScope.Windows
                 !activation.ExpirationDate.HasValue;
             if (contradictory || kmsPermanentWithoutLease || editionMismatch)
                 return Result(4, "license-logic", "Logic bản quyền", CrackTraceStatus.Suspicious,
-                    "Có ít nhất một quy tắc đối chiếu edition/channel/state không khớp.",
+                    "Có ít nhất một quy tắc đối chiếu phiên bản, kênh và trạng thái không khớp.",
                     evidence, 65);
 
             if (!activation.LicenseStatus.HasValue || string.IsNullOrWhiteSpace(activation.Channel))
                 return Result(4, "license-logic", "Logic bản quyền", CrackTraceStatus.Unknown,
-                    "Không đủ dữ liệu để đối chiếu đầy đủ edition, channel và trạng thái.",
+                    "Không đủ dữ liệu để đối chiếu đầy đủ phiên bản, kênh và trạng thái.",
                     evidence, 25, incomplete: HasUnavailable(snapshot, "Activation"));
 
             return Result(4, "license-logic", "Logic bản quyền",
                 CrackTraceStatus.TraceNotFound,
-                "Trạng thái kích hoạt, edition và channel hiện tại không có mâu thuẫn rõ ràng; đây không phải bằng chứng xác minh nguồn gốc license.",
+                "Trạng thái kích hoạt, phiên bản và kênh hiện tại không có mâu thuẫn rõ ràng; đây không phải bằng chứng xác minh nguồn gốc giấy phép.",
                 evidence, 60);
         }
 
@@ -365,24 +365,24 @@ namespace LicenseScope.Windows
                     .Count() >= 2)
                 return Result(5, "tool-paths", "Thư mục công cụ",
                     CrackTraceStatus.Detected,
-                    "Nhiều nguồn lịch sử độc lập cùng khớp allowlist công cụ kích hoạt.",
+                    "Nhiều nguồn lịch sử độc lập cùng khớp danh sách cho phép về công cụ kích hoạt.",
                     evidence, 82, strong: true);
             if (explicitTools.Length > 0)
                 return Result(5, "tool-paths", "Thư mục công cụ", CrackTraceStatus.Detected,
-                    "Phát hiện đường dẫn chính xác nằm trong allowlist công cụ kích hoạt của repository.",
+                    "Phát hiện đường dẫn chính xác nằm trong danh sách cho phép về công cụ kích hoạt.",
                     evidence, 88, strong: true);
             if (historical.Length > 0)
                 return Result(5, "tool-paths", "Thư mục công cụ",
                     CrackTraceStatus.Suspicious,
-                    "Có ít nhất một dấu vết thực thi lịch sử khớp allowlist.",
+                    "Có ít nhất một dấu vết thực thi lịch sử khớp danh sách cho phép.",
                     evidence, 55);
             if (snapshot.Paths.Any(x => Contains(x, "GenuineTicket")))
                 return Result(5, "tool-paths", "Thư mục công cụ", CrackTraceStatus.Suspicious,
-                    "Có artifact GenuineTicket khớp quy tắc quan sát.",
+                    "Có dấu vết GenuineTicket khớp quy tắc quan sát.",
                     evidence, 30);
             return Result(5, "tool-paths", "Thư mục công cụ",
                 CrackTraceStatus.TraceNotFound,
-                "Không tìm thấy đường dẫn công cụ trong allowlist giới hạn.", evidence, 60,
+                "Không tìm thấy đường dẫn công cụ trong danh sách cho phép giới hạn.", evidence, 60,
                 incomplete: HasUnavailable(snapshot, "Path"));
         }
 
@@ -390,29 +390,29 @@ namespace LicenseScope.Windows
         {
             var evidence = snapshot.Tasks.Select(DescribeArtifact).ToArray();
             if (snapshot.Tasks.Any(x => x.NameMatched && x.ActionMatched))
-                return Result(6, "scheduled-tasks", "Tác vụ ẩn (Task)",
+                return Result(6, "scheduled-tasks", "Tác vụ ẩn",
                     CrackTraceStatus.Detected,
                     "Tên/path và action của tác vụ cùng khớp pattern đã kiểm chứng.",
                     evidence, 88, strong: true, definitive: true);
             if (snapshot.Tasks.Count > 0)
-                return Result(6, "scheduled-tasks", "Tác vụ ẩn (Task)",
+                return Result(6, "scheduled-tasks", "Tác vụ ẩn",
                     CrackTraceStatus.Suspicious,
                     "Tên hoặc action của tác vụ khớp pattern, nhưng chưa đồng thời khớp cả hai.",
                     evidence, 50);
             if (HasUnavailable(snapshot, "ScheduledTask"))
-                return Result(6, "scheduled-tasks", "Tác vụ ẩn (Task)",
+                return Result(6, "scheduled-tasks", "Tác vụ ẩn",
                     CrackTraceStatus.Unknown,
-                    "Không thể đọc đầy đủ Scheduled Tasks bằng quyền hiện tại.",
+                    "Không thể đọc đầy đủ tác vụ đã lập lịch bằng quyền hiện tại.",
                     Unavailable(snapshot, "ScheduledTask"), 10, incomplete: true);
-            return Result(6, "scheduled-tasks", "Tác vụ ẩn (Task)",
+            return Result(6, "scheduled-tasks", "Tác vụ ẩn",
                 CrackTraceStatus.TraceNotFound,
-                "Không tìm thấy tác vụ kích hoạt khớp allowlist.", evidence, 60);
+                "Không tìm thấy tác vụ kích hoạt khớp danh sách cho phép.", evidence, 60);
         }
 
         private static CrackTraceCheckResult AnalyzeRegistry(CrackTraceEvidenceSnapshot snapshot)
         {
             if (HasUnavailable(snapshot, "Registry"))
-                return Result(7, "registry-interference", "Can thiệp Registry",
+                return Result(7, "registry-interference", "Can thiệp sổ đăng ký",
                     CrackTraceStatus.Unknown,
                     "Không thể đọc đầy đủ khóa Software Protection Platform bằng quyền hiện tại.",
                     Unavailable(snapshot, "Registry"), 10, incomplete: true);
@@ -422,27 +422,27 @@ namespace LicenseScope.Windows
                     x.Name.Equals("KnownToolKey", StringComparison.OrdinalIgnoreCase))
                 .ToArray();
             if (toolKeys.Length > 0)
-                return Result(7, "registry-interference", "Can thiệp Registry",
+                return Result(7, "registry-interference", "Can thiệp sổ đăng ký",
                     CrackTraceStatus.Detected,
-                    "Tìm thấy khóa registry chính xác trong allowlist công cụ kích hoạt.",
-                    toolKeys.Select(x => "Registry key: " + x.Path),
+                    "Tìm thấy khóa sổ đăng ký chính xác trong danh sách cho phép về công cụ kích hoạt.",
+                    toolKeys.Select(x => "Khóa sổ đăng ký: " + x.Path),
                     75,
                     strong: true);
 
             var noGenTicket = snapshot.RegistryValues.FirstOrDefault(x =>
                 x.Name.Equals("NoGenTicket", StringComparison.OrdinalIgnoreCase));
             if (noGenTicket != null && noGenTicket.Present)
-                return Result(7, "registry-interference", "Can thiệp Registry",
+                return Result(7, "registry-interference", "Can thiệp sổ đăng ký",
                     CrackTraceStatus.Suspicious,
                     "Tìm thấy giá trị NoGenTicket tại registry path được kiểm tra.",
                     new[]
                     {
-                        "Registry value: " + noGenTicket.Path + "\\" + noGenTicket.Name +
+                        "Giá trị sổ đăng ký: " + noGenTicket.Path + "\\" + noGenTicket.Name +
                         "=" + SensitiveDataMasker.SanitizeDiagnosticText(noGenTicket.Value)
                     }, 20);
-            return Result(7, "registry-interference", "Can thiệp Registry",
+            return Result(7, "registry-interference", "Can thiệp sổ đăng ký",
                 CrackTraceStatus.TraceNotFound,
-                "Không tìm thấy giá trị registry allowlist trong phép kiểm tra hiện tại.",
+                "Không tìm thấy giá trị sổ đăng ký thuộc danh sách cho phép trong phép kiểm tra hiện tại.",
                 Array.Empty<string>(), 55);
         }
 
@@ -515,48 +515,48 @@ namespace LicenseScope.Windows
             if (!options.DeepForensicScan)
             {
                 historical = DetectionCoverageStatus.NotChecked;
-                historicalDetail = "Deep forensic scan was not enabled.";
+                historicalDetail = "Chưa bật quét pháp chứng chuyên sâu.";
             }
             else if (!snapshot.DeepForensicScanPerformed ||
                      snapshot.UnavailableSources.Any(IsDeepUnavailable))
             {
                 historical = DetectionCoverageStatus.Unknown;
                 historicalDetail =
-                    "One or more consented forensic sources were unavailable.";
+                    "Một hoặc nhiều nguồn pháp chứng đã được cho phép không khả dụng.";
             }
             else
             {
                 historical = DetectionCoverageStatus.Checked;
                 historicalDetail =
-                    "Consented allowlisted historical sources were checked.";
+                    "Đã kiểm tra các nguồn lịch sử trong danh sách cho phép.";
             }
             return new[]
             {
                 Coverage(
                     "current-licensing-state",
-                    "Current licensing state",
+                    "Trạng thái cấp phép hiện tại",
                     currentActivation,
-                    "All relevant SoftwareLicensingProduct records were requested."),
+                    "Đã yêu cầu tất cả bản ghi SoftwareLicensingProduct liên quan."),
                 Coverage(
                     "current-kms-configuration",
-                    "Current KMS configuration",
+                    "Cấu hình KMS hiện tại",
                     currentKms,
-                    "Current host, port, lease/grace and expiration were requested."),
+                    "Đã yêu cầu máy chủ, cổng, thời gian thuê/ân hạn và thời điểm hết hạn hiện tại."),
                 Coverage(
                     "known-services-tasks-files",
-                    "Known services/tasks/files",
+                    "Dịch vụ, tác vụ và tệp đã biết",
                     currentArtifacts,
-                    "Only repository allowlisted current-state artifacts were checked."),
+                    "Chỉ kiểm tra các dấu vết trạng thái hiện tại nằm trong danh sách cho phép."),
                 Coverage(
                     "historical-execution-traces",
-                    "Historical execution traces",
+                    "Dấu vết thực thi trong quá khứ",
                     historical,
                     historicalDetail),
                 Coverage(
                     "digital-license-provenance",
-                    "Digital-license provenance",
+                    "Nguồn gốc giấy phép số",
                     DetectionCoverageStatus.NotTechnicallyVerifiable,
-                    "Current Windows state cannot establish how a digital entitlement was created.")
+                    "Trạng thái Windows hiện tại không thể xác định giấy phép số đã được tạo bằng cách nào.")
             };
         }
 
@@ -582,29 +582,29 @@ namespace LicenseScope.Windows
             {
                 Coverage(
                     "current-licensing-state",
-                    "Current licensing state",
+                    "Trạng thái cấp phép hiện tại",
                     DetectionCoverageStatus.Unknown,
-                    "Scan error."),
+                    "Lỗi quét."),
                 Coverage(
                     "current-kms-configuration",
-                    "Current KMS configuration",
+                    "Cấu hình KMS hiện tại",
                     DetectionCoverageStatus.Unknown,
-                    "Scan error."),
+                    "Lỗi quét."),
                 Coverage(
                     "known-services-tasks-files",
-                    "Known services/tasks/files",
+                    "Dịch vụ, tác vụ và tệp đã biết",
                     DetectionCoverageStatus.Unknown,
-                    "Scan error."),
+                    "Lỗi quét."),
                 Coverage(
                     "historical-execution-traces",
-                    "Historical execution traces",
+                    "Dấu vết thực thi trong quá khứ",
                     DetectionCoverageStatus.Unknown,
-                    "Scan error."),
+                    "Lỗi quét."),
                 Coverage(
                     "digital-license-provenance",
-                    "Digital-license provenance",
+                    "Nguồn gốc giấy phép số",
                     DetectionCoverageStatus.NotTechnicallyVerifiable,
-                    "Not technically verifiable.")
+                    "Không thể xác minh bằng kỹ thuật hiện có.")
             };
         }
 
@@ -614,13 +614,13 @@ namespace LicenseScope.Windows
         {
             var values = new List<string>
             {
-                "Digital-license provenance cannot be established from current activation state."
+                "Không thể xác định nguồn gốc giấy phép số chỉ từ trạng thái kích hoạt hiện tại."
             };
             if (!options.DeepForensicScan)
                 values.Add(
-                    "Historical licensing, PowerShell, Defender, Prefetch and Amcache traces were not checked.");
+                    "Chưa kiểm tra lịch sử cấp phép, PowerShell, Defender, Prefetch và Amcache.");
             values.AddRange(snapshot.UnavailableSources.Select(
-                SensitiveDataMasker.SanitizeDiagnosticText));
+                DescribeUnavailableSource));
             return values.Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
@@ -749,22 +749,62 @@ namespace LicenseScope.Windows
 
         private static string DescribeArtifact(CrackTraceArtifact artifact)
         {
-            var value = artifact.Source + ": " + artifact.Name;
+            var value = "Nguồn " + SourceName(artifact.Source) + ": " + artifact.Name;
             if (!string.IsNullOrWhiteSpace(artifact.Path)) value += " [" + artifact.Path + "]";
-            if (!string.IsNullOrWhiteSpace(artifact.Action)) value += " -> " + artifact.Action;
+            if (!string.IsNullOrWhiteSpace(artifact.Action)) value += " -> hành động: " + artifact.Action;
             return value;
+        }
+
+        private static string SourceName(string source)
+        {
+            switch (source)
+            {
+                case "Service": return "dịch vụ";
+                case "Process": return "tiến trình";
+                case "ScheduledTask": return "tác vụ đã lập lịch";
+                case "Path": return "đường dẫn";
+                case "Registry": return "sổ đăng ký";
+                case "Activation": return "trạng thái kích hoạt";
+                case "DeepForensic": return "pháp chứng chuyên sâu";
+                case "LicensingEventLog": return "nhật ký cấp phép";
+                case "PowerShellOperational": return "nhật ký vận hành PowerShell";
+                case "DefenderDetectionHistory": return "lịch sử phát hiện Defender";
+                case "Prefetch": return "Prefetch";
+                case "Amcache": return "Amcache";
+                default: return source;
+            }
+        }
+
+        private static string DescribeUnavailableSource(string value)
+        {
+            var sanitized = SensitiveDataMasker.SanitizeDiagnosticText(value);
+            var separator = sanitized.IndexOf(':');
+            if (separator < 0) return sanitized;
+            var source = SourceName(sanitized.Substring(0, separator).Trim());
+            var detail = sanitized.Substring(separator + 1).Trim()
+                .Replace(
+                    "allowlisted inventory is not mounted",
+                    "kho kiểm kê trong danh sách cho phép chưa được gắn")
+                .Replace(
+                    "allowlisted lookup unavailable without enumerating unrelated entries",
+                    "không thể tra cứu danh sách cho phép nếu không duyệt các mục không liên quan")
+                .Replace("source unavailable", "nguồn dữ liệu không khả dụng")
+                .Replace("query unavailable", "truy vấn không khả dụng")
+                .Replace("access denied", "bị từ chối truy cập")
+                .Replace("unavailable", "không khả dụng");
+            return source + ": " + detail;
         }
 
         private static string SanitizeHost(string host)
         {
             if (string.IsNullOrWhiteSpace(host)) return string.Empty;
-            if (IsLoopback(host)) return "[loopback]";
+            if (IsLoopback(host)) return "[máy cục bộ]";
             var publicMatch = WindowsCrackTraceEvidenceSource.PublicKmsKeywords
                 .FirstOrDefault(x =>
                     host.IndexOf(x, StringComparison.OrdinalIgnoreCase) >= 0);
             return publicMatch == null
-                ? "[configured host]"
-                : "[public-host keyword: " +
+                ? "[máy chủ đã cấu hình]"
+                : "[từ khóa máy chủ công cộng: " +
                   SensitiveDataMasker.SanitizeDiagnosticText(publicMatch) + "]";
         }
 
@@ -779,7 +819,9 @@ namespace LicenseScope.Windows
             string source)
         {
             return snapshot.UnavailableSources.Where(x =>
-                x.StartsWith(source, StringComparison.OrdinalIgnoreCase)).ToArray();
+                    x.StartsWith(source, StringComparison.OrdinalIgnoreCase))
+                .Select(DescribeUnavailableSource)
+                .ToArray();
         }
 
         private static string Id(int order)
@@ -795,8 +837,9 @@ namespace LicenseScope.Windows
         {
             return new[]
             {
-                "", "KMS Crack", "MAS / HWID", "KMS38 Hook", "Logic bản quyền",
-                "Thư mục công cụ", "Tác vụ ẩn (Task)", "Can thiệp Registry"
+                "", "Kích hoạt KMS trái phép", "Kích hoạt số MAS/HWID",
+                "Can thiệp KMS38", "Logic bản quyền", "Thư mục công cụ",
+                "Tác vụ ẩn", "Can thiệp sổ đăng ký"
             }[order];
         }
     }
@@ -836,10 +879,10 @@ namespace LicenseScope.Windows
         {
             if (traceDetected)
                 return "CÓ DẤU VẾT: Phát hiện " + evidenceCount +
-                       " bằng chứng khớp allowlist. Xem mục Evidence để đối chiếu nguồn và giá trị cụ thể.";
+                       " bằng chứng khớp danh sách cho phép. Xem mục Bằng chứng để đối chiếu nguồn và giá trị cụ thể.";
             return scanCompleted
-                ? "KHÔNG PHÁT HIỆN DẤU VẾT: Không có bằng chứng nào khớp allowlist trong các nguồn đã kiểm tra."
-                : "KHÔNG PHÁT HIỆN DẤU VẾT TRONG CÁC PHÉP KIỂM TRA HOÀN TẤT. ScanCompleted: KHÔNG.";
+                ? "KHÔNG PHÁT HIỆN DẤU VẾT: Không có bằng chứng nào khớp danh sách cho phép trong các nguồn đã kiểm tra."
+                : "KHÔNG PHÁT HIỆN DẤU VẾT TRONG CÁC PHÉP KIỂM TRA HOÀN TẤT. Quét hoàn tất: KHÔNG.";
         }
     }
 }

@@ -64,14 +64,14 @@
             <Button x:Name="ThirdPartyCheckButton" Content="Kiểm tra kích hoạt bên thứ ba"
                     Width="205" Height="34" Margin="8,0,0,0"
                     Click="CheckThirdParty_Click"/>
-            <Button x:Name="CrackTraceButton" Content="Phân tích dấu vết crack"
+            <Button x:Name="CrackTraceButton" Content="Phân tích dấu vết kích hoạt"
                     Width="175" Height="34" Margin="8,0,0,0"
                     Click="CrackTrace_Click"
                     Background="#fefce8" Foreground="#854d0e"/>
             <CheckBox x:Name="DeepForensicCheckBox"
-                      Content="Deep forensic scan"
+                      Content="Quét pháp chứng chuyên sâu"
                       Margin="12,0,0,0" VerticalAlignment="Center"
-                      ToolTip="Tắt mặc định. Chỉ đọc các nguồn lịch sử allowlist sau khi người dùng xác nhận."/>
+                      ToolTip="Tắt mặc định. Chỉ đọc các nguồn lịch sử trong danh sách cho phép sau khi người dùng xác nhận."/>
         </WrapPanel>
 
         <ProgressBar x:Name="ScanProgress" Grid.Row="3" Height="6" Minimum="0" Maximum="100"
@@ -153,7 +153,7 @@
         </DataGrid>
 
         <Expander x:Name="CrackTracePanel" Grid.Row="5"
-                  Header="Phân tích dấu vết crack Windows"
+                  Header="Phân tích dấu vết kích hoạt Windows"
                   Visibility="Collapsed" IsExpanded="True" Margin="0,12,0,0">
             <Border BorderBrush="#d1d5db" BorderThickness="1" Background="#111827"
                     CornerRadius="4" Padding="4">
@@ -170,7 +170,7 @@
         <DockPanel Grid.Row="6" Margin="0,12,0,0">
             <TextBlock x:Name="StatusText" Text="Sẵn sàng. Ứng dụng không thay đổi trạng thái bản quyền."
                        Foreground="#4b5563" VerticalAlignment="Center"/>
-            <TextBlock DockPanel.Dock="Right" Text="Settings: %LOCALAPPDATA%\LicenseScope"
+            <TextBlock DockPanel.Dock="Right" Text="Cài đặt: %LOCALAPPDATA%\LicenseScope"
                        Foreground="#9ca3af" HorizontalAlignment="Right"/>
         </DockPanel>
     </Grid>

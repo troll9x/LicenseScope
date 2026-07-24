@@ -335,22 +335,22 @@ namespace LicenseScope.App
             {
                 var consent = MessageBox.Show(
                     this,
-                    "Deep forensic scan chỉ đọc các event log cấp phép Windows, PowerShell Operational khi có logging, lịch sử phát hiện Defender và các entry Prefetch/Amcache nằm trong allowlist.\n\nKhông quét file người dùng, không tải dữ liệu lên mạng và không sửa hoặc xóa dữ liệu. Bạn có đồng ý chạy kiểm tra sâu này?",
-                    "Đồng ý Deep forensic scan",
+                    "Quét pháp chứng chuyên sâu chỉ đọc nhật ký sự kiện cấp phép Windows, nhật ký vận hành PowerShell khi hệ thống có ghi nhật ký, lịch sử phát hiện của Defender và các mục Prefetch/Amcache nằm trong danh sách cho phép.\n\nKhông quét tệp người dùng, không tải dữ liệu lên mạng và không sửa hoặc xóa dữ liệu. Bạn có đồng ý chạy kiểm tra sâu này?",
+                    "Đồng ý quét pháp chứng chuyên sâu",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
                 if (consent != MessageBoxResult.Yes)
                 {
                     DeepForensicCheckBox.IsChecked = false;
                     SetRunning(false);
-                    StatusText.Text = "Đã hủy Deep forensic scan vì chưa có sự đồng ý.";
+                    StatusText.Text = "Đã hủy quét pháp chứng chuyên sâu vì chưa có sự đồng ý.";
                     return;
                 }
                 options.DeepForensicScan = true;
                 options.UserConsented = true;
             }
             StatusText.Text = options.DeepForensicScan
-                ? "Đang phân tích dấu vết với Deep forensic scan chỉ đọc…"
+                ? "Đang phân tích dấu vết bằng chế độ pháp chứng chuyên sâu chỉ đọc…"
                 : "Đang phân tích 7 nhóm dấu vết hiện tại ở chế độ chỉ đọc…";
             try
             {
@@ -373,9 +373,9 @@ namespace LicenseScope.App
                 RenderCrackTrace(analysis);
                 CrackTracePanel.Visibility = Visibility.Visible;
                 CrackTracePanel.IsExpanded = true;
-                StatusText.Text = "Phân tích hoàn tất: TraceDetected=" +
+                StatusText.Text = "Phân tích hoàn tất: Phát hiện dấu vết=" +
                                   (analysis.TraceDetected ? "CÓ" : "KHÔNG") +
-                                  "; ScanCompleted=" +
+                                  "; Quét hoàn tất=" +
                                   (analysis.ScanCompleted ? "CÓ" : "KHÔNG") + ".";
             }
             catch (OperationCanceledException)

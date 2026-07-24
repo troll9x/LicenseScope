@@ -25,10 +25,12 @@ namespace LicenseScope.Reporting.Tests
                     .Format(Analysis(CrackTraceVerdict.TraceDetected, checks))
                     .Select(x => x.Text));
 
-            StringAssert.Contains(text, "ScanCompleted: CÓ");
-            StringAssert.Contains(text, "ActivationDetected: CÓ");
-            StringAssert.Contains(text, "TraceDetected: CÓ");
-            StringAssert.Contains(text, "ProvenanceVerified: KHÔNG");
+            StringAssert.Contains(text, "Quét hoàn tất: CÓ");
+            StringAssert.Contains(text, "Phát hiện kích hoạt: CÓ");
+            StringAssert.Contains(text, "Phát hiện dấu vết: CÓ");
+            StringAssert.Contains(text, "Xác minh nguồn gốc giấy phép: KHÔNG");
+            Assert.IsFalse(text.Contains("ScanCompleted:"));
+            Assert.IsFalse(text.Contains("TraceDetected:"));
             Assert.IsFalse(text.Contains("SUSPICIOUS"));
             Assert.IsFalse(text.Contains("HIGH_RISK"));
             Assert.IsFalse(text.Contains("INCONCLUSIVE"));
@@ -60,14 +62,18 @@ namespace LicenseScope.Reporting.Tests
             StringAssert.Contains(json, "\"activationDetected\":true");
             StringAssert.Contains(json, "\"traceDetected\":true");
             StringAssert.Contains(json, "\"provenanceVerified\":false");
+            StringAssert.Contains(json, "\"scanCompleted\":\"Quét hoàn tất\"");
+            StringAssert.Contains(json, "\"traceDetected\":\"Phát hiện dấu vết\"");
             StringAssert.Contains(json, "\"matched\":true");
             StringAssert.Contains(json, "\"checked\":true");
             StringAssert.Contains(json, "\"uncheckedSourceDetails\"");
             Assert.IsFalse(json.Contains("\"traceVerdict\""));
             Assert.IsFalse(json.Contains("\"provenanceVerdict\""));
 
-            StringAssert.Contains(csv, "ScanCompleted,ActivationDetected,TraceDetected,ProvenanceVerified");
-            StringAssert.Contains(html, "<dt>TraceDetected</dt><dd>CÓ");
+            StringAssert.Contains(csv, "Quét hoàn tất,Phát hiện kích hoạt,Phát hiện dấu vết,Xác minh nguồn gốc giấy phép");
+            StringAssert.Contains(html, "<dt>Phát hiện dấu vết</dt><dd>CÓ");
+            Assert.IsFalse(csv.Contains("ScanCompleted"));
+            Assert.IsFalse(html.Contains("<dt>TraceDetected</dt>"));
             foreach (var output in new[] { json, csv, html })
             {
                 for (var order = 1; order <= 7; order++)
@@ -101,10 +107,10 @@ namespace LicenseScope.Reporting.Tests
                 "html",
                 audit);
 
-            StringAssert.Contains(text, "TraceDetected: KHÔNG");
+            StringAssert.Contains(text, "Phát hiện dấu vết: KHÔNG");
             StringAssert.Contains(json, "\"traceDetected\":false");
-            StringAssert.Contains(csv, "TraceDetected");
-            StringAssert.Contains(html, "<dt>TraceDetected</dt><dd>KHÔNG");
+            StringAssert.Contains(csv, "Phát hiện dấu vết");
+            StringAssert.Contains(html, "<dt>Phát hiện dấu vết</dt><dd>KHÔNG");
         }
 
         [TestMethod]
@@ -146,7 +152,7 @@ namespace LicenseScope.Reporting.Tests
             {
                 Order = order,
                 Id = "check-" + order,
-                DisplayName = "Check " + order,
+                DisplayName = "Kiểm tra " + order,
                 Status = status,
                 Completed = status != CrackTraceStatus.Error &&
                             status != CrackTraceStatus.Unknown,
@@ -175,23 +181,23 @@ namespace LicenseScope.Reporting.Tests
                     new DetectionCoverageItem
                     {
                         Id = "current-licensing-state",
-                        DisplayName = "Current licensing state",
+                        DisplayName = "Trạng thái cấp phép hiện tại",
                         Status = DetectionCoverageStatus.Checked,
                         Checked = true
                     },
                     new DetectionCoverageItem
                     {
                         Id = "digital-license-provenance",
-                        DisplayName = "Digital-license provenance",
+                        DisplayName = "Nguồn gốc giấy phép số",
                         Status =
                             DetectionCoverageStatus.NotTechnicallyVerifiable,
                         Checked = false
                     }
                 },
-                BlindSpots = new[] { "provenance source was not checked" },
+                BlindSpots = new[] { "chưa kiểm tra nguồn xác minh nguồn gốc" },
                 Evidence = new[]
                 {
-                    "check-1 | Registry: NoGenTicket=1"
+                    "check-1 | Sổ đăng ký: NoGenTicket=1"
                 },
                 Confidence = 50,
                 VerdictSummary = verdict == CrackTraceVerdict.TraceDetected

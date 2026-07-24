@@ -54,10 +54,12 @@ Kết quả offline có thể là `Licensed`, `Unlicensed`, `Expired`,
 `NeedsOnlineVerification`, `Unknown` hoặc `Error`. Một sản phẩm cần xác minh
 online không được tự động coi là không có bản quyền.
 
-Analyzer dấu vết xuất bốn sự kiện nhị phân: `ScanCompleted`,
-`ActivationDetected`, `TraceDetected` và `ProvenanceVerified`. `TraceDetected`
-chỉ trả lời một việc khách quan: có hay không có bằng chứng khớp allowlist.
-Mọi kết quả `CÓ` đều kèm scanner ID, nguồn và giá trị evidence cụ thể.
+Bộ phân tích dấu vết hiển thị bốn kết quả nhị phân: **Quét hoàn tất**,
+**Phát hiện kích hoạt**, **Phát hiện dấu vết** và
+**Xác minh nguồn gốc giấy phép**. Báo cáo JSON vẫn giữ các khóa kỹ thuật
+`scanCompleted`, `activationDetected`, `traceDetected` và
+`provenanceVerified` để bảo đảm tương thích. Mọi kết quả `CÓ` đều kèm mã bộ
+quét, nguồn và giá trị bằng chứng cụ thể.
 
 ## Cài đặt và sử dụng
 
@@ -80,9 +82,9 @@ LicenseScope.Cli.exe audit --all --no-evidence --quiet
 LicenseScope.Cli.exe audit --all --deep-forensic-scan --consent-forensic-read
 ```
 
-Deep forensic scan tắt mặc định. Nó chỉ đọc các nguồn lịch sử Windows nằm trong
-allowlist sau khi người dùng đồng ý rõ ràng; không quét file người dùng, không
-upload và không sửa hoặc xóa dữ liệu.
+Quét pháp chứng chuyên sâu tắt mặc định. Chế độ này chỉ đọc các nguồn lịch sử
+Windows nằm trong danh sách cho phép sau khi người dùng đồng ý rõ ràng; không
+quét tệp người dùng, không tải dữ liệu lên mạng và không sửa hoặc xóa dữ liệu.
 
 Mã thoát của lệnh audit:
 
