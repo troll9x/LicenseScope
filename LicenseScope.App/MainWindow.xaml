@@ -113,6 +113,29 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Lý do vi phạm" Width="190">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock TextWrapping="Wrap" Foreground="#4b5563">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="—"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status}" Value="Unlicensed">
+                                                <Setter Property="Text" Value="Không có giấy phép"/>
+                                                <Setter Property="Foreground" Value="#b91c1c"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="Expired">
+                                                <Setter Property="Text" Value="Giấy phép đã hết hạn"/>
+                                                <Setter Property="Foreground" Value="#b91c1c"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Header="Xử lý" Width="125">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
