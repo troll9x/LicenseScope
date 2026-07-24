@@ -28,6 +28,7 @@ namespace LicenseScope.Windows.Acquisition
             var products = new List<WindowsLicenseProductRecord>();
             var warnings = new List<string>();
             var oa3 = string.Empty;
+            var oa3Description = string.Empty;
             var backup = string.Empty;
             try
             {
@@ -46,10 +47,28 @@ namespace LicenseScope.Windows.Acquisition
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var serviceRows = _wmi.Query("SELECT OA3xOriginalProductKey FROM SoftwareLicensingService");
-                if (serviceRows.Count > 0) oa3 = NormalizeProductKey(GetString(serviceRows[0], "OA3xOriginalProductKey"));
+                if (serviceRows.Count > 0)
+                    oa3 = NormalizeProductKey(GetString(serviceRows[0], "OA3xOriginalProductKey"));
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { warnings.Add("OEM firmware evidence unavailable (" + ex.GetType().Name + ")."); }
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var descriptionRows = _wmi.Query(
+                    "SELECT OA3xOriginalProductKeyDescription FROM SoftwareLicensingService");
+                if (descriptionRows.Count > 0)
+                    oa3Description = GetString(
+                        descriptionRows[0],
+                        "OA3xOriginalProductKeyDescription");
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                warnings.Add(
+                    "OEM firmware edition unavailable (" + ex.GetType().Name + ").");
+            }
 
             var registryResult = _registry.ReadLocalMachineString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform", "BackupProductKeyDefault", RegistryViewPreference.Registry64);
             if (registryResult.Found) backup = NormalizeProductKey(registryResult.Value);
@@ -65,7 +84,7 @@ namespace LicenseScope.Windows.Acquisition
                 slmgr = new SlmgrEvidenceResult();
             }
             if (slmgr.Warning.Length > 0) warnings.Add(slmgr.Warning);
-            return new WindowsLicenseEvidence { Products = products, Xpr = slmgr.Xpr, Dlv = slmgr.Dlv, Oa3ProductKey = oa3, BackupProductKey = backup, Warnings = warnings };
+            return new WindowsLicenseEvidence { Products = products, Xpr = slmgr.Xpr, Dlv = slmgr.Dlv, Oa3ProductKey = oa3, Oa3ProductKeyDescription = oa3Description, BackupProductKey = backup, Warnings = warnings };
         }
 
         private static WindowsLicenseProductRecord MapProduct(IReadOnlyDictionary<string, object?> row)

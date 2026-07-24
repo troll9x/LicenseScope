@@ -11,4 +11,11 @@ namespace LicenseScope.Windows.Acquisition
             SystemContext context,
             CancellationToken cancellationToken);
     }
+
+    public interface IDeepCrackTraceEvidenceSource
+    {
+        Task<CrackTraceEvidenceSnapshot> CollectDeepForensicAsync(
+            SystemContext context,
+            CancellationToken cancellationToken);
+    }
 }

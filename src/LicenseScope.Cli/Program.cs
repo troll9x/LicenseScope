@@ -119,7 +119,14 @@ namespace LicenseScope.Cli
                     return environment.InstalledNetFrameworkVersion < new Version(4, 8) ? 8 : 7;
                 }
 
-                var result = await _audit.RunAllAsync(token).ConfigureAwait(false);
+                var result = await _audit.RunAllAsync(
+                    token,
+                    null,
+                    new CrackTraceScanOptions
+                    {
+                        DeepForensicScan = parsed.DeepForensicScan,
+                        UserConsented = parsed.ForensicConsent
+                    }).ConfigureAwait(false);
                 var consoleSnapshot = new AuditResultSanitizer().CreateReportSnapshot(
                     result,
                     new ReportWriteOptions { IncludeEvidence = true, IncludeWarnings = false });
@@ -199,7 +206,7 @@ namespace LicenseScope.Cli
                     continue;
                 }
                 ConsoleColor? color = null;
-                if (line.Status == CrackTraceStatus.Clean) color = ConsoleColor.Green;
+                if (line.Status == CrackTraceStatus.TraceNotFound) color = ConsoleColor.Cyan;
                 else if (line.Status == CrackTraceStatus.Suspicious) color = ConsoleColor.Yellow;
                 else if (line.Status == CrackTraceStatus.Detected) color = ConsoleColor.Red;
                 else if (line.Status == CrackTraceStatus.Unknown) color = ConsoleColor.Gray;
@@ -220,6 +227,7 @@ namespace LicenseScope.Cli
             _console.WriteLine(
                 "Options: --format json,csv,html  --output <directory>  " +
                 "--include-evidence|--no-evidence  --include-machine-name  " +
+                "--deep-forensic-scan --consent-forensic-read  " +
                 "--overwrite  --quiet  --help  --version");
             _console.WriteLine(
                 "Audit includes seven-group Windows crack-trace analysis. " +
@@ -228,7 +236,8 @@ namespace LicenseScope.Cli
                 "Default output directory: .\\reports. Privacy defaults exclude " +
                 "machine name and mask keys/accounts.");
             _console.WriteLine(
-                "Exit codes: 0 compatible/clean, 1 unlicensed/expired, 2 incomplete, " +
+                "Exit codes: 0 compatible/no blocking license finding, " +
+                "1 unlicensed/expired, 2 incomplete, " +
                 "3 fatal, 4 arguments, 5 report, 6 cancelled, 7 unsupported " +
                 "OS/architecture, 8 framework insufficient, 9 compatibility unknown.");
         }
@@ -300,6 +309,10 @@ namespace LicenseScope.Cli
                 else if (argument == "--include-evidence") result.IncludeEvidence = true;
                 else if (argument == "--no-evidence") result.IncludeEvidence = false;
                 else if (argument == "--include-machine-name") result.IncludeMachine = true;
+                else if (argument == "--deep-forensic-scan")
+                    result.DeepForensicScan = true;
+                else if (argument == "--consent-forensic-read")
+                    result.ForensicConsent = true;
                 else if (argument == "--overwrite") result.Overwrite = true;
                 else if (argument == "--quiet") result.Quiet = true;
                 else
@@ -308,6 +321,18 @@ namespace LicenseScope.Cli
                     result.Error = "Unknown option: " + argument;
                     break;
                 }
+            }
+            if (result.Valid && result.DeepForensicScan && !result.ForensicConsent)
+            {
+                result.Valid = false;
+                result.Error =
+                    "--deep-forensic-scan requires --consent-forensic-read.";
+            }
+            if (result.Valid && result.ForensicConsent && !result.DeepForensicScan)
+            {
+                result.Valid = false;
+                result.Error =
+                    "--consent-forensic-read is only valid with --deep-forensic-scan.";
             }
             return result;
         }
@@ -322,6 +347,8 @@ namespace LicenseScope.Cli
             public string Output = Path.GetFullPath("reports");
             public bool IncludeEvidence = true;
             public bool IncludeMachine;
+            public bool DeepForensicScan;
+            public bool ForensicConsent;
             public bool Overwrite;
             public bool Quiet;
         }

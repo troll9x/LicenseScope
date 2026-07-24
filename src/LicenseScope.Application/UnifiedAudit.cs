@@ -17,7 +17,13 @@ using LicenseScope.Windows.Models;
 
 namespace LicenseScope.Application
 {
-    public interface IUnifiedAuditService { Task<AuditResult> RunAllAsync(CancellationToken cancellationToken, IProgress<AuditProgress>? progress = null); }
+    public interface IUnifiedAuditService
+    {
+        Task<AuditResult> RunAllAsync(
+            CancellationToken cancellationToken,
+            IProgress<AuditProgress>? progress = null,
+            CrackTraceScanOptions? crackTraceOptions = null);
+    }
 
     public static class ProductionScannerFactory
     {
@@ -54,14 +60,18 @@ namespace LicenseScope.Application
         }
         public async Task<AuditResult> RunAllAsync(
             CancellationToken cancellationToken,
-            IProgress<AuditProgress>? progress = null)
+            IProgress<AuditProgress>? progress = null,
+            CrackTraceScanOptions? crackTraceOptions = null)
         {
             var context = _context.GetCurrent();
             var result = await _orchestrator.RunAllAsync(context, cancellationToken, progress)
                 .ConfigureAwait(false);
             if (!result.WasCancelled && _crackTraceAnalyzer != null)
                 result.CrackTraceAnalysis = await _crackTraceAnalyzer
-                    .AnalyzeAsync(context, cancellationToken)
+                    .AnalyzeAsync(
+                        context,
+                        crackTraceOptions ?? new CrackTraceScanOptions(),
+                        cancellationToken)
                     .ConfigureAwait(false);
             return result;
         }

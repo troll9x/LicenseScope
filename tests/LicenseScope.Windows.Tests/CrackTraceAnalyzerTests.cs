@@ -32,13 +32,18 @@ namespace LicenseScope.Windows.Tests
         }
 
         [TestMethod]
-        public async Task NoBadEvidenceProducesCleanVerdict()
+        public async Task LicenseStatusOneAloneNeverProvesCleanProvenance()
         {
             var result = await Analyze(new CrackTraceEvidenceSnapshot
             {
                 Activation = ConsistentRetailActivation()
             });
-            Assert.AreEqual(CrackTraceVerdict.Clean, result.Verdict);
+            Assert.AreEqual(WindowsActivationState.Activated, result.ActivationState);
+            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            Assert.AreEqual(
+                LicenseProvenanceVerdict.Unverified,
+                result.ProvenanceVerdict);
+            Assert.IsFalse(result.VerdictSummary.Contains("AN TOÀN"));
             Assert.IsFalse(result.Checks.Any(x =>
                 x.Status == CrackTraceStatus.Detected ||
                 x.Status == CrackTraceStatus.Suspicious));
@@ -62,7 +67,7 @@ namespace LicenseScope.Windows.Tests
                     }
                 }
             });
-            Assert.AreEqual(CrackTraceVerdict.Suspicious, result.Verdict);
+            Assert.AreEqual(CrackTraceVerdict.Suspicious, result.TraceVerdict);
             Assert.AreEqual(
                 CrackTraceStatus.Suspicious,
                 result.Checks.Single(x => x.Order == 6).Status);
@@ -97,7 +102,7 @@ namespace LicenseScope.Windows.Tests
                     }
                 }
             });
-            Assert.AreEqual(CrackTraceVerdict.HighRisk, result.Verdict);
+            Assert.AreEqual(CrackTraceVerdict.HighRisk, result.TraceVerdict);
             Assert.IsTrue(result.Checks.Count(x =>
                 x.Status == CrackTraceStatus.Detected && x.IsStrongSignal) >= 2);
         }
@@ -121,8 +126,10 @@ namespace LicenseScope.Windows.Tests
                 }
             });
             var registry = result.Checks.Single(x => x.Order == 7);
-            Assert.AreEqual(CrackTraceStatus.Clean, registry.Status);
-            Assert.AreEqual(CrackTraceVerdict.Clean, result.Verdict);
+            Assert.AreEqual(CrackTraceStatus.Suspicious, registry.Status);
+            Assert.IsFalse(registry.IsStrongSignal);
+            Assert.AreEqual(CrackTraceVerdict.Suspicious, result.TraceVerdict);
+            Assert.AreNotEqual(CrackTraceVerdict.HighRisk, result.TraceVerdict);
         }
 
         [TestMethod]
@@ -136,9 +143,9 @@ namespace LicenseScope.Windows.Tests
             activation.GracePeriodRemaining = 200000;
             var result = await Analyze(new CrackTraceEvidenceSnapshot { Activation = activation });
             Assert.AreEqual(
-                CrackTraceStatus.Clean,
+                CrackTraceStatus.TraceNotFound,
                 result.Checks.Single(x => x.Order == 1).Status);
-            Assert.AreNotEqual(CrackTraceVerdict.HighRisk, result.Verdict);
+            Assert.AreNotEqual(CrackTraceVerdict.HighRisk, result.TraceVerdict);
         }
 
         [TestMethod]
@@ -149,8 +156,9 @@ namespace LicenseScope.Windows.Tests
                 Activation = ConsistentRetailActivation()
             });
             var mas = result.Checks.Single(x => x.Order == 2);
-            Assert.AreEqual(CrackTraceStatus.Clean, mas.Status);
-            StringAssert.Contains(mas.Summary, "không bị coi là bất thường");
+            Assert.AreEqual(CrackTraceStatus.TraceNotFound, mas.Status);
+            StringAssert.Contains(mas.Summary, "không chứng minh nguồn gốc");
+            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
         }
 
         [TestMethod]
@@ -173,7 +181,7 @@ namespace LicenseScope.Windows.Tests
                 CancellationToken.None);
             Assert.AreEqual(7, result.Checks.Count);
             Assert.IsTrue(result.Checks.All(x => x.Status == CrackTraceStatus.Error));
-            Assert.AreEqual(CrackTraceVerdict.ScanError, result.Verdict);
+            Assert.AreEqual(CrackTraceVerdict.ScanError, result.TraceVerdict);
         }
 
         [TestMethod]
@@ -195,7 +203,139 @@ namespace LicenseScope.Windows.Tests
             Assert.AreEqual(
                 CrackTraceStatus.Unknown,
                 result.Checks.Single(x => x.Order == 7).Status);
-            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.Verdict);
+            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            Assert.IsFalse(result.VerdictSummary.Contains("AN TOÀN"));
+        }
+
+        [TestMethod]
+        public async Task NoArtifactsReturnsTraceNotFoundNotSafetyClaim()
+        {
+            var result = await Analyze(new CrackTraceEvidenceSnapshot());
+            Assert.AreEqual(
+                CrackTraceVerdict.TraceNotFound,
+                result.TraceVerdict);
+            StringAssert.StartsWith(
+                result.VerdictSummary,
+                "KHÔNG PHÁT HIỆN DẤU VẾT:");
+            Assert.IsFalse(result.VerdictSummary.Contains("AN TOÀN"));
+            Assert.IsFalse(result.VerdictSummary.Contains("Bản quyền hợp lệ"));
+            Assert.IsFalse(result.VerdictSummary.Contains("Không sử dụng crack"));
+        }
+
+        [TestMethod]
+        public async Task OemDmAndMatchingFirmwareAreConsistentStateOnly()
+        {
+            var activation = ConsistentRetailActivation();
+            activation.Channel = "OEM_DM";
+            activation.ProductName = "Windows 11 Pro";
+            activation.FirmwareEdition = "Windows 11 Professional OEM_DM";
+            var result = await Analyze(
+                new CrackTraceEvidenceSnapshot { Activation = activation });
+            Assert.AreEqual(
+                LicenseProvenanceVerdict.ConsistentState,
+                result.ProvenanceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            Assert.AreNotEqual(
+                "VERIFIED",
+                CrackTraceVerdictNames.ToMachineValue(result.ProvenanceVerdict));
+        }
+
+        [TestMethod]
+        public async Task HwidLikeDigitalActivationWithoutArtifactsIsInconclusive()
+        {
+            var activation = ConsistentRetailActivation();
+            activation.OemFirmwareKeyPresent = false;
+            var result = await Analyze(
+                new CrackTraceEvidenceSnapshot { Activation = activation });
+            Assert.AreEqual(WindowsActivationState.Activated, result.ActivationState);
+            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            StringAssert.StartsWith(
+                result.VerdictSummary,
+                "KHÔNG THỂ KẾT LUẬN:");
+        }
+
+        [TestMethod]
+        public async Task DeepScanDisabledDoesNotInspectForensicSources()
+        {
+            var source = new FakeSource(new CrackTraceEvidenceSnapshot());
+            var analyzer = new WindowsCrackTraceAnalyzer(source);
+            var result = await analyzer.AnalyzeAsync(
+                new SystemContext { OsName = "Windows" },
+                CancellationToken.None);
+            Assert.AreEqual(0, source.DeepCalls);
+            Assert.IsFalse(result.DeepForensicScanEnabled);
+            Assert.AreEqual(
+                DetectionCoverageStatus.NotChecked,
+                result.DetectionCoverage.Single(x =>
+                    x.Id == "historical-execution-traces").Status);
+        }
+
+        [TestMethod]
+        public async Task DeepScanRequiresConsentAndReportsUnavailableAsUnknown()
+        {
+            var source = new FakeSource(
+                new CrackTraceEvidenceSnapshot(),
+                new CrackTraceEvidenceSnapshot
+                {
+                    DeepForensicScanPerformed = true,
+                    UnavailableSources = new[] { "Prefetch: UnauthorizedAccessException" }
+                });
+            var analyzer = new WindowsCrackTraceAnalyzer(source);
+            var withoutConsent = await analyzer.AnalyzeAsync(
+                new SystemContext { OsName = "Windows" },
+                new CrackTraceScanOptions { DeepForensicScan = true },
+                CancellationToken.None);
+            Assert.AreEqual(CrackTraceVerdict.ScanError, withoutConsent.TraceVerdict);
+            Assert.AreEqual(0, source.DeepCalls);
+
+            var withConsent = await analyzer.AnalyzeAsync(
+                new SystemContext { OsName = "Windows" },
+                new CrackTraceScanOptions
+                {
+                    DeepForensicScan = true,
+                    UserConsented = true
+                },
+                CancellationToken.None);
+            Assert.AreEqual(1, source.DeepCalls);
+            Assert.AreEqual(
+                DetectionCoverageStatus.Unknown,
+                withConsent.DetectionCoverage.Single(x =>
+                    x.Id == "historical-execution-traces").Status);
+            Assert.IsFalse(withConsent.TraceVerdict ==
+                           CrackTraceVerdict.TraceNotFound);
+        }
+
+        [TestMethod]
+        public async Task StructuredFieldsAreAlwaysPopulated()
+        {
+            var result = await Analyze(new CrackTraceEvidenceSnapshot());
+            Assert.AreEqual(5, result.DetectionCoverage.Count);
+            Assert.AreEqual(
+                DetectionCoverageStatus.Checked,
+                result.DetectionCoverage.Single(x =>
+                    x.Id == "current-licensing-state").Status);
+            Assert.AreEqual(
+                DetectionCoverageStatus.Checked,
+                result.DetectionCoverage.Single(x =>
+                    x.Id == "current-kms-configuration").Status);
+            Assert.AreEqual(
+                DetectionCoverageStatus.Checked,
+                result.DetectionCoverage.Single(x =>
+                    x.Id == "known-services-tasks-files").Status);
+            Assert.AreEqual(
+                DetectionCoverageStatus.NotChecked,
+                result.DetectionCoverage.Single(x =>
+                    x.Id == "historical-execution-traces").Status);
+            Assert.AreEqual(
+                DetectionCoverageStatus.NotTechnicallyVerifiable,
+                result.DetectionCoverage.Single(x =>
+                    x.Id == "digital-license-provenance").Status);
+            Assert.IsTrue(result.BlindSpots.Count > 0);
+            Assert.IsTrue(result.Evidence.Count > 0);
+            Assert.IsTrue(result.Confidence >= 0);
+            Assert.AreEqual(
+                "TRACE_NOT_FOUND",
+                CrackTraceVerdictNames.ToMachineValue(result.TraceVerdict));
         }
 
         private static Task<CrackTraceAnalysisResult> Analyze(
@@ -219,13 +359,33 @@ namespace LicenseScope.Windows.Tests
             };
         }
 
-        private sealed class FakeSource : ICrackTraceEvidenceSource
+        private sealed class FakeSource :
+            ICrackTraceEvidenceSource,
+            IDeepCrackTraceEvidenceSource
         {
             private readonly CrackTraceEvidenceSnapshot _snapshot;
-            public FakeSource(CrackTraceEvidenceSnapshot snapshot) { _snapshot = snapshot; }
+            private readonly CrackTraceEvidenceSnapshot _deepSnapshot;
+            public int DeepCalls { get; private set; }
+            public FakeSource(
+                CrackTraceEvidenceSnapshot snapshot,
+                CrackTraceEvidenceSnapshot? deepSnapshot = null)
+            {
+                _snapshot = snapshot;
+                _deepSnapshot = deepSnapshot ?? new CrackTraceEvidenceSnapshot
+                {
+                    DeepForensicScanPerformed = true
+                };
+            }
             public Task<CrackTraceEvidenceSnapshot> CollectAsync(
                 SystemContext context,
                 CancellationToken cancellationToken) => Task.FromResult(_snapshot);
+            public Task<CrackTraceEvidenceSnapshot> CollectDeepForensicAsync(
+                SystemContext context,
+                CancellationToken cancellationToken)
+            {
+                DeepCalls++;
+                return Task.FromResult(_deepSnapshot);
+            }
         }
 
         private sealed class ThrowingSource : ICrackTraceEvidenceSource

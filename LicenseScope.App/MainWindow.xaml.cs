@@ -376,12 +376,33 @@ namespace LicenseScope.App
             _cancellation?.Dispose();
             _cancellation = new CancellationTokenSource();
             SetRunning(true);
-            StatusText.Text = "Đang phân tích 7 nhóm dấu vết crack Windows ở chế độ chỉ đọc…";
+            var options = new CrackTraceScanOptions();
+            if (DeepForensicCheckBox.IsChecked == true)
+            {
+                var consent = MessageBox.Show(
+                    this,
+                    "Deep forensic scan chỉ đọc các event log cấp phép Windows, PowerShell Operational khi có logging, lịch sử phát hiện Defender và các entry Prefetch/Amcache nằm trong allowlist.\n\nKhông quét file người dùng, không tải dữ liệu lên mạng và không sửa hoặc xóa dữ liệu. Bạn có đồng ý chạy kiểm tra sâu này?",
+                    "Đồng ý Deep forensic scan",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (consent != MessageBoxResult.Yes)
+                {
+                    DeepForensicCheckBox.IsChecked = false;
+                    SetRunning(false);
+                    StatusText.Text = "Đã hủy Deep forensic scan vì chưa có sự đồng ý.";
+                    return;
+                }
+                options.DeepForensicScan = true;
+                options.UserConsented = true;
+            }
+            StatusText.Text = options.DeepForensicScan
+                ? "Đang phân tích dấu vết với Deep forensic scan chỉ đọc…"
+                : "Đang phân tích 7 nhóm dấu vết hiện tại ở chế độ chỉ đọc…";
             try
             {
                 var context = new DefaultSystemContextProvider().GetCurrent();
                 var analysis = await ApplicationCompositionRoot.CreateCrackTraceAnalyzer()
-                    .AnalyzeAsync(context, _cancellation.Token);
+                    .AnalyzeAsync(context, options, _cancellation.Token);
                 if (_result == null)
                 {
                     var now = DateTimeOffset.Now;
@@ -399,7 +420,8 @@ namespace LicenseScope.App
                 CrackTracePanel.Visibility = Visibility.Visible;
                 CrackTracePanel.IsExpanded = true;
                 StatusText.Text = "Phân tích hoàn tất: " +
-                                  CrackTraceVerdictNames.ToMachineValue(analysis.Verdict) + ".";
+                                  CrackTraceVerdictNames.ToMachineValue(
+                                      analysis.TraceVerdict) + ".";
             }
             catch (OperationCanceledException)
             {
@@ -440,7 +462,7 @@ namespace LicenseScope.App
 
         private static Brush BrushFor(CrackTraceDisplayLine line)
         {
-            if (line.Status == CrackTraceStatus.Clean) return Brushes.LightGreen;
+            if (line.Status == CrackTraceStatus.TraceNotFound) return Brushes.LightSkyBlue;
             if (line.Status == CrackTraceStatus.Suspicious) return Brushes.Gold;
             if (line.Status == CrackTraceStatus.Detected) return Brushes.OrangeRed;
             if (line.Status == CrackTraceStatus.Unknown) return Brushes.LightGray;
@@ -506,6 +528,7 @@ namespace LicenseScope.App
             ThirdPartyCheckButton.IsEnabled = !running;
             SimulationScanButton.IsEnabled = !running;
             CrackTraceButton.IsEnabled = !running;
+            DeepForensicCheckBox.IsEnabled = !running;
             ResultsGrid.IsEnabled = !running;
         }
 

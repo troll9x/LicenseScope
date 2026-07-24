@@ -5,7 +5,7 @@ namespace LicenseScope.Core.Models
 {
     public enum CrackTraceStatus
     {
-        Clean,
+        TraceNotFound,
         Suspicious,
         Detected,
         Unknown,
@@ -14,11 +14,47 @@ namespace LicenseScope.Core.Models
 
     public enum CrackTraceVerdict
     {
-        Clean,
+        TraceNotFound,
         Suspicious,
         HighRisk,
         Inconclusive,
         ScanError
+    }
+
+    public enum WindowsActivationState
+    {
+        Unknown,
+        Activated,
+        NotActivated
+    }
+
+    public enum LicenseProvenanceVerdict
+    {
+        Unverified,
+        ConsistentState,
+        Inconclusive
+    }
+
+    public enum DetectionCoverageStatus
+    {
+        Checked,
+        NotChecked,
+        NotTechnicallyVerifiable,
+        Unknown
+    }
+
+    public sealed class CrackTraceScanOptions
+    {
+        public bool DeepForensicScan { get; set; }
+        public bool UserConsented { get; set; }
+    }
+
+    public sealed class DetectionCoverageItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public DetectionCoverageStatus Status { get; set; }
+        public string Detail { get; set; } = string.Empty;
     }
 
     public sealed class CrackTraceCheckResult
@@ -41,7 +77,15 @@ namespace LicenseScope.Core.Models
         public DateTimeOffset CompletedAt { get; set; }
         public IReadOnlyList<CrackTraceCheckResult> Checks { get; set; } =
             Array.Empty<CrackTraceCheckResult>();
-        public CrackTraceVerdict Verdict { get; set; }
+        public WindowsActivationState ActivationState { get; set; }
+        public CrackTraceVerdict TraceVerdict { get; set; }
+        public LicenseProvenanceVerdict ProvenanceVerdict { get; set; }
+        public IReadOnlyList<DetectionCoverageItem> DetectionCoverage { get; set; } =
+            Array.Empty<DetectionCoverageItem>();
+        public IReadOnlyList<string> BlindSpots { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> Evidence { get; set; } = Array.Empty<string>();
+        public int Confidence { get; set; }
+        public bool DeepForensicScanEnabled { get; set; }
         public string VerdictSummary { get; set; } = string.Empty;
     }
 
@@ -51,11 +95,43 @@ namespace LicenseScope.Core.Models
         {
             switch (verdict)
             {
-                case CrackTraceVerdict.Clean: return "CLEAN";
+                case CrackTraceVerdict.TraceNotFound: return "TRACE_NOT_FOUND";
                 case CrackTraceVerdict.Suspicious: return "SUSPICIOUS";
                 case CrackTraceVerdict.HighRisk: return "HIGH_RISK";
                 case CrackTraceVerdict.Inconclusive: return "INCONCLUSIVE";
                 default: return "SCAN_ERROR";
+            }
+        }
+
+        public static string ToMachineValue(WindowsActivationState state)
+        {
+            switch (state)
+            {
+                case WindowsActivationState.Activated: return "ACTIVATED";
+                case WindowsActivationState.NotActivated: return "NOT_ACTIVATED";
+                default: return "UNKNOWN";
+            }
+        }
+
+        public static string ToMachineValue(LicenseProvenanceVerdict verdict)
+        {
+            switch (verdict)
+            {
+                case LicenseProvenanceVerdict.ConsistentState: return "CONSISTENT_STATE";
+                case LicenseProvenanceVerdict.Unverified: return "UNVERIFIED";
+                default: return "INCONCLUSIVE";
+            }
+        }
+
+        public static string ToMachineValue(DetectionCoverageStatus status)
+        {
+            switch (status)
+            {
+                case DetectionCoverageStatus.Checked: return "CHECKED";
+                case DetectionCoverageStatus.NotChecked: return "NOT_CHECKED";
+                case DetectionCoverageStatus.NotTechnicallyVerifiable:
+                    return "NOT_TECHNICALLY_VERIFIABLE";
+                default: return "UNKNOWN";
             }
         }
     }

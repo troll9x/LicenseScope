@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -15,7 +16,9 @@ using LicenseScope.Windows.Parsing;
 
 namespace LicenseScope.Windows.Acquisition
 {
-    public sealed class WindowsCrackTraceEvidenceSource : ICrackTraceEvidenceSource
+    public sealed class WindowsCrackTraceEvidenceSource :
+        ICrackTraceEvidenceSource,
+        IDeepCrackTraceEvidenceSource
     {
         internal static readonly string[] ToolKeywords =
         {
@@ -64,7 +67,6 @@ namespace LicenseScope.Windows.Acquisition
             var paths = CollectPaths(context, unavailable, cancellationToken);
             var tasks = await CollectTasksAsync(context, unavailable, cancellationToken)
                 .ConfigureAwait(false);
-            var events = CollectEvents(unavailable, cancellationToken);
             var registry = CollectRegistry(unavailable);
             return new CrackTraceEvidenceSnapshot
             {
@@ -73,10 +75,51 @@ namespace LicenseScope.Windows.Acquisition
                 Processes = processes,
                 Paths = paths,
                 Tasks = tasks,
-                Events = events,
+                Events = Array.Empty<CrackTraceArtifact>(),
                 RegistryValues = registry,
                 UnavailableSources = unavailable.Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
             };
+        }
+
+        public Task<CrackTraceEvidenceSnapshot> CollectDeepForensicAsync(
+            SystemContext context,
+            CancellationToken cancellationToken)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            var unavailable = new List<string>();
+            var checkedSources = new List<string>();
+            var events = new List<CrackTraceArtifact>();
+            events.AddRange(CollectClassicLicensingEvents(
+                unavailable, checkedSources, cancellationToken));
+            events.AddRange(CollectEventChannel(
+                "Microsoft-Windows-Security-SPP/Operational",
+                "LicensingEventLog",
+                unavailable,
+                checkedSources,
+                cancellationToken));
+            events.AddRange(CollectEventChannel(
+                "Microsoft-Windows-PowerShell/Operational",
+                "PowerShellOperational",
+                unavailable,
+                checkedSources,
+                cancellationToken));
+            events.AddRange(CollectEventChannel(
+                "Microsoft-Windows-Windows Defender/Operational",
+                "DefenderDetectionHistory",
+                unavailable,
+                checkedSources,
+                cancellationToken));
+            events.AddRange(CollectPrefetch(
+                context, unavailable, checkedSources, cancellationToken));
+            CollectAllowlistedAmcache(unavailable);
+            return Task.FromResult(new CrackTraceEvidenceSnapshot
+            {
+                Events = events,
+                UnavailableSources = unavailable.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+                DeepForensicScanPerformed = true,
+                DeepForensicSourcesChecked =
+                    checkedSources.Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+            });
         }
 
         private async Task<WindowsActivationTrace> CollectActivationAsync(
@@ -91,13 +134,35 @@ namespace LicenseScope.Windows.Acquisition
                 {
                     if (warning.IndexOf("unavailable", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         warning.IndexOf("denied", StringComparison.OrdinalIgnoreCase) >= 0)
-                        unavailable.Add("Activation: " + warning);
+                    {
+                        unavailable.Add(
+                            warning.StartsWith(
+                                "OEM firmware edition",
+                                StringComparison.OrdinalIgnoreCase)
+                                ? "FirmwareEdition: " + warning
+                                : "Activation: " + warning);
+                    }
                 }
                 var selected = new WindowsProductSelector().Select(evidence.Products).Product;
                 var channel = new WindowsChannelClassifier().Classify(
                     selected?.Description ?? evidence.Dlv.Description,
                     selected?.ProductKeyChannel ?? string.Empty);
                 var partial = selected?.PartialProductKey ?? evidence.Dlv.PartialProductKey;
+                var channels = new WindowsChannelClassifier();
+                var products = evidence.Products.Select(product =>
+                    new WindowsActivationProductTrace
+                    {
+                        ProductName = product.Name,
+                        EditionDescription = product.Description,
+                        Channel = channels.Classify(
+                            product.Description,
+                            product.ProductKeyChannel),
+                        LicenseStatus = product.LicenseStatus,
+                        GracePeriodRemaining = product.GracePeriodRemaining,
+                        ExpirationDate = product.EvaluationEndDate,
+                        KmsHost = product.KmsMachineName,
+                        KmsPort = product.KmsPort
+                    }).ToArray();
                 return new WindowsActivationTrace
                 {
                     ProductName = selected?.Name ?? context.OsName,
@@ -113,8 +178,10 @@ namespace LicenseScope.Windows.Acquisition
                     IsPermanent = evidence.Xpr.IsPermanent,
                     IndicatesUnlicensed = evidence.Xpr.IndicatesUnlicensed,
                     OemFirmwareKeyPresent = !string.IsNullOrWhiteSpace(evidence.Oa3ProductKey),
+                    FirmwareEdition = evidence.Oa3ProductKeyDescription,
                     KmsHost = selected?.KmsMachineName ?? evidence.Dlv.KmsMachineName,
-                    KmsPort = selected?.KmsPort
+                    KmsPort = selected?.KmsPort,
+                    Products = products
                 };
             }
             catch (OperationCanceledException) { throw; }
@@ -275,8 +342,9 @@ namespace LicenseScope.Windows.Acquisition
             return result;
         }
 
-        private static IReadOnlyList<CrackTraceArtifact> CollectEvents(
+        private static IReadOnlyList<CrackTraceArtifact> CollectClassicLicensingEvents(
             ICollection<string> unavailable,
+            ICollection<string> checkedSources,
             CancellationToken token)
         {
             var result = new List<CrackTraceArtifact>();
@@ -307,10 +375,142 @@ namespace LicenseScope.Windows.Acquisition
                         });
                     }
                 }
+                checkedSources.Add("LicensingEventLog");
             }
             catch (OperationCanceledException) { throw; }
-            catch (Exception ex) { unavailable.Add("EventLog: " + ex.GetType().Name); }
+            catch (Exception ex)
+            {
+                unavailable.Add("LicensingEventLog: " + ex.GetType().Name);
+            }
             return result;
+        }
+
+        private static IReadOnlyList<CrackTraceArtifact> CollectEventChannel(
+            string logName,
+            string sourceName,
+            ICollection<string> unavailable,
+            ICollection<string> checkedSources,
+            CancellationToken token)
+        {
+            var result = new List<CrackTraceArtifact>();
+            try
+            {
+                var query = new EventLogQuery(logName, PathType.LogName)
+                {
+                    ReverseDirection = true,
+                    TolerateQueryErrors = true
+                };
+                using (var reader = new EventLogReader(query))
+                {
+                    for (var inspected = 0; inspected < 512; inspected++)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        using (var record = reader.ReadEvent())
+                        {
+                            if (record == null) break;
+                            string description;
+                            try { description = record.FormatDescription() ?? string.Empty; }
+                            catch (EventLogException) { description = string.Empty; }
+                            var keyword = FindDeepKeyword(description);
+                            if (keyword.Length == 0) continue;
+                            result.Add(new CrackTraceArtifact
+                            {
+                                Source = sourceName,
+                                Name = (record.ProviderName ?? sourceName) +
+                                       " / Event " + record.Id,
+                                MatchedKeyword = keyword,
+                                NameMatched = true
+                            });
+                        }
+                    }
+                }
+                checkedSources.Add(sourceName);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) when (
+                ex is EventLogException ||
+                ex is UnauthorizedAccessException ||
+                ex is System.Security.SecurityException)
+            {
+                unavailable.Add(sourceName + ": " + ex.GetType().Name);
+            }
+            return result;
+        }
+
+        private static IReadOnlyList<CrackTraceArtifact> CollectPrefetch(
+            SystemContext context,
+            ICollection<string> unavailable,
+            ICollection<string> checkedSources,
+            CancellationToken token)
+        {
+            var result = new List<CrackTraceArtifact>();
+            var directory = Path.Combine(context.WindowsDirectory, "Prefetch");
+            try
+            {
+                if (!Directory.Exists(directory))
+                {
+                    unavailable.Add("Prefetch: unavailable");
+                    return result;
+                }
+                foreach (var keyword in ToolKeywords)
+                {
+                    token.ThrowIfCancellationRequested();
+                    foreach (var path in Directory.EnumerateFiles(
+                                 directory,
+                                 keyword + "*.pf",
+                                 SearchOption.TopDirectoryOnly))
+                    {
+                        token.ThrowIfCancellationRequested();
+                        result.Add(new CrackTraceArtifact
+                        {
+                            Source = "Prefetch",
+                            Name = Path.GetFileName(path),
+                            MatchedKeyword = keyword,
+                            NameMatched = true
+                        });
+                    }
+                }
+                checkedSources.Add("Prefetch");
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) when (
+                ex is UnauthorizedAccessException ||
+                ex is System.Security.SecurityException ||
+                ex is IOException)
+            {
+                unavailable.Add("Prefetch: " + ex.GetType().Name);
+            }
+            return result;
+        }
+
+        private static void CollectAllowlistedAmcache(
+            ICollection<string> unavailable)
+        {
+            try
+            {
+                using (var key = Registry.LocalMachine.OpenSubKey(
+                           @"Amcache\Root\InventoryApplicationFile",
+                           false))
+                {
+                    if (key == null)
+                    {
+                        unavailable.Add("Amcache: allowlisted inventory is not mounted");
+                        return;
+                    }
+                    // Amcache entries are hash-keyed and cannot be queried by the allowlisted
+                    // executable names without enumerating unrelated inventory. Preserve the
+                    // privacy boundary and report UNKNOWN instead.
+                    unavailable.Add(
+                        "Amcache: allowlisted lookup unavailable without enumerating unrelated entries");
+                }
+            }
+            catch (Exception ex) when (
+                ex is UnauthorizedAccessException ||
+                ex is System.Security.SecurityException ||
+                ex is IOException)
+            {
+                unavailable.Add("Amcache: " + ex.GetType().Name);
+            }
         }
 
         private static IReadOnlyList<CrackTraceRegistryEvidence> CollectRegistry(
@@ -318,20 +518,44 @@ namespace LicenseScope.Windows.Acquisition
         {
             try
             {
+                var result = new List<CrackTraceRegistryEvidence>();
                 using (var key = Registry.LocalMachine.OpenSubKey(SoftwareProtectionPolicyPath, false))
                 {
                     var value = key?.GetValue("NoGenTicket");
-                    return new[]
-                    {
+                    result.Add(
                         new CrackTraceRegistryEvidence
                         {
                             Path = @"HKLM\" + SoftwareProtectionPolicyPath,
                             Name = "NoGenTicket",
-                            Value = value == null ? string.Empty : Convert.ToString(value) ?? string.Empty,
+                            Value = value == null
+                                ? string.Empty
+                                : Convert.ToString(value) ?? string.Empty,
                             Present = value != null
-                        }
-                    };
+                        });
                 }
+                foreach (var path in new[]
+                         {
+                             @"SOFTWARE\KMSpico",
+                             @"SOFTWARE\WOW6432Node\KMSpico",
+                             @"SOFTWARE\KMSAuto",
+                             @"SOFTWARE\WOW6432Node\KMSAuto",
+                             @"SYSTEM\CurrentControlSet\Services\KMSELDI",
+                             @"SYSTEM\CurrentControlSet\Services\KMService"
+                         })
+                {
+                    using (var key = Registry.LocalMachine.OpenSubKey(path, false))
+                    {
+                        if (key == null) continue;
+                        result.Add(new CrackTraceRegistryEvidence
+                        {
+                            Path = @"HKLM\" + path,
+                            Name = "KnownToolKey",
+                            Value = "[present]",
+                            Present = true
+                        });
+                    }
+                }
+                return result;
             }
             catch (Exception ex) when (
                 ex is UnauthorizedAccessException ||
@@ -384,6 +608,17 @@ namespace LicenseScope.Windows.Acquisition
             return ToolKeywords.FirstOrDefault(x =>
                 (value ?? string.Empty).IndexOf(x, StringComparison.OrdinalIgnoreCase) >= 0) ??
                    string.Empty;
+        }
+
+        private static string FindDeepKeyword(string value)
+        {
+            var keyword = FindKeyword(value);
+            if (keyword.Length > 0) return keyword;
+            return new[] { "HackTool", "Activator", "KMS emulator", "digital entitlement" }
+                .FirstOrDefault(x =>
+                    (value ?? string.Empty).IndexOf(
+                        x,
+                        StringComparison.OrdinalIgnoreCase) >= 0) ?? string.Empty;
         }
 
         private static string MaskPartialKey(string value)

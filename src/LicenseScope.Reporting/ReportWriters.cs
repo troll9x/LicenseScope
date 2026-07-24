@@ -186,8 +186,30 @@ namespace LicenseScope.Reporting
                 ",\"definitiveActiveSignal\":" +
                 check.IsDefinitiveActiveSignal.ToString().ToLowerInvariant() +
                 ",\"dataIncomplete\":" + check.IsDataIncomplete.ToString().ToLowerInvariant() + "}"));
-            return "{\"verdict\":" +
-                   Escape.Json(CrackTraceVerdictNames.ToMachineValue(analysis.Verdict)) +
+            var coverage = string.Join(",", analysis.DetectionCoverage.Select(item =>
+                "{\"id\":" + Escape.Json(item.Id) +
+                ",\"name\":" + Escape.Json(item.DisplayName) +
+                ",\"status\":" +
+                Escape.Json(CrackTraceVerdictNames.ToMachineValue(item.Status)) +
+                ",\"detail\":" + Escape.Json(item.Detail) + "}"));
+            var traceVerdict =
+                CrackTraceVerdictNames.ToMachineValue(analysis.TraceVerdict);
+            return "{\"activationState\":" +
+                   Escape.Json(CrackTraceVerdictNames.ToMachineValue(
+                       analysis.ActivationState)) +
+                   ",\"traceVerdict\":" + Escape.Json(traceVerdict) +
+                   ",\"verdict\":" + Escape.Json(traceVerdict) +
+                   ",\"provenanceVerdict\":" +
+                   Escape.Json(CrackTraceVerdictNames.ToMachineValue(
+                       analysis.ProvenanceVerdict)) +
+                   ",\"detectionCoverage\":[" + coverage + "]" +
+                   ",\"blindSpots\":[" +
+                   string.Join(",", analysis.BlindSpots.Select(Escape.Json)) + "]" +
+                   ",\"evidence\":[" +
+                   string.Join(",", analysis.Evidence.Select(Escape.Json)) + "]" +
+                   ",\"confidence\":" + analysis.Confidence +
+                   ",\"deepForensicScanEnabled\":" +
+                   analysis.DeepForensicScanEnabled.ToString().ToLowerInvariant() +
                    ",\"summary\":" + Escape.Json(analysis.VerdictSummary) +
                    ",\"checks\":[" + checks + "]}";
         }
@@ -221,10 +243,27 @@ namespace LicenseScope.Reporting
             if (report.CrackTraceAnalysis != null)
             {
                 builder.AppendLine();
-                builder.AppendLine("CrackTraceVerdict,CrackTraceSummary");
-                builder.AppendLine(Escape.Csv(CrackTraceVerdictNames.ToMachineValue(
-                                       report.CrackTraceAnalysis.Verdict)) + "," +
-                                   Escape.Csv(report.CrackTraceAnalysis.VerdictSummary));
+                builder.AppendLine(
+                    "ActivationState,TraceVerdict,ProvenanceVerdict,DetectionCoverage,BlindSpots,Evidence,Confidence,CrackTraceSummary");
+                builder.AppendLine(string.Join(",", new[]
+                {
+                    Escape.Csv(CrackTraceVerdictNames.ToMachineValue(
+                        report.CrackTraceAnalysis.ActivationState)),
+                    Escape.Csv(CrackTraceVerdictNames.ToMachineValue(
+                        report.CrackTraceAnalysis.TraceVerdict)),
+                    Escape.Csv(CrackTraceVerdictNames.ToMachineValue(
+                        report.CrackTraceAnalysis.ProvenanceVerdict)),
+                    Escape.Csv(string.Join(" | ",
+                        report.CrackTraceAnalysis.DetectionCoverage.Select(x =>
+                            x.DisplayName + ": " +
+                            CrackTraceVerdictNames.ToMachineValue(x.Status)))),
+                    Escape.Csv(string.Join(" | ",
+                        report.CrackTraceAnalysis.BlindSpots)),
+                    Escape.Csv(string.Join(" | ",
+                        report.CrackTraceAnalysis.Evidence)),
+                    Escape.Csv(report.CrackTraceAnalysis.Confidence.ToString()),
+                    Escape.Csv(report.CrackTraceAnalysis.VerdictSummary)
+                }));
                 builder.AppendLine(
                     "CrackTraceOrder,CrackTraceId,CrackTraceName,CrackTraceStatus,CrackTraceConfidence,CrackTraceEvidence");
                 foreach (var check in report.CrackTraceAnalysis.Checks.OrderBy(x => x.Order))
@@ -270,7 +309,7 @@ namespace LicenseScope.Reporting
                    "table{border-collapse:collapse;width:100%;margin-top:18px}" +
                    "th,td{border:1px solid #777;padding:8px;text-align:left}th{background:#f3f0fe}" +
                    ".trace{font-family:Consolas,monospace;border-left:5px solid #777;padding:8px;margin:8px 0}" +
-                   ".trace.clean{color:#166534;border-left-color:#166534}" +
+                   ".trace.trace-not-found,.trace.tracenotfound{color:#1d4ed8;border-left-color:#3b82f6}" +
                    ".trace.suspicious{color:#854d0e;border-left-color:#ca8a04}" +
                    ".trace.detected,.trace.error{color:#991b1b;border-left-color:#dc2626}" +
                    ".trace.unknown{color:#4b5563;border-left-color:#6b7280}" +
@@ -300,19 +339,56 @@ namespace LicenseScope.Reporting
                 "</strong><div class=\"evidence\">" +
                 string.Join("", check.Evidence.Select(item =>
                     "<div>- " + Escape.Html(item) + "</div>")) + "</div></div>"));
-            var verdictClass = analysis.Verdict == CrackTraceVerdict.Clean
-                ? "clean"
-                : analysis.Verdict == CrackTraceVerdict.Suspicious
+            var verdictClass = analysis.TraceVerdict == CrackTraceVerdict.TraceNotFound
+                ? "trace-not-found"
+                : analysis.TraceVerdict == CrackTraceVerdict.Suspicious
                     ? "suspicious"
-                    : analysis.Verdict == CrackTraceVerdict.HighRisk
+                    : analysis.TraceVerdict == CrackTraceVerdict.HighRisk
                         ? "detected"
-                        : analysis.Verdict == CrackTraceVerdict.Inconclusive
+                        : analysis.TraceVerdict == CrackTraceVerdict.Inconclusive
                             ? "unknown"
                             : "error";
+            var coverage = "<h3>Coverage</h3><ul>" +
+                           string.Join("", analysis.DetectionCoverage.Select(item =>
+                               "<li>" + Escape.Html(item.DisplayName) + ": " +
+                               Escape.Html(CoverageText(item.Status)) + "</li>")) +
+                           "</ul>";
+            var blindSpots = "<h3>Blind spots</h3><ul>" +
+                             string.Join("", analysis.BlindSpots.Select(item =>
+                                 "<li>" + Escape.Html(item) + "</li>")) +
+                             "</ul>";
+            var evidence = "<h3>Evidence</h3><ul>" +
+                           string.Join("", analysis.Evidence.Select(item =>
+                               "<li>" + Escape.Html(item) + "</li>")) +
+                           "</ul>";
             return "<section><h2>Phân tích dấu vết crack Windows</h2>" + checks +
+                   "<dl><dt>ActivationState</dt><dd>" +
+                   Escape.Html(CrackTraceVerdictNames.ToMachineValue(
+                       analysis.ActivationState)) +
+                   "</dd><dt>TraceVerdict</dt><dd>" +
+                   Escape.Html(CrackTraceVerdictNames.ToMachineValue(
+                       analysis.TraceVerdict)) +
+                   "</dd><dt>ProvenanceVerdict</dt><dd>" +
+                   Escape.Html(CrackTraceVerdictNames.ToMachineValue(
+                       analysis.ProvenanceVerdict)) +
+                   "</dd><dt>Confidence</dt><dd>" + analysis.Confidence +
+                   "</dd></dl>" + coverage + blindSpots + evidence +
                    "<p class=\"verdict trace " + verdictClass + "\">" +
-                   Escape.Html("=> " + CrackTraceVerdictNames.ToMachineValue(analysis.Verdict) +
+                   Escape.Html("=> " + CrackTraceVerdictNames.ToMachineValue(
+                                   analysis.TraceVerdict) +
                                ": " + analysis.VerdictSummary) + "</p></section>";
+        }
+
+        private static string CoverageText(DetectionCoverageStatus status)
+        {
+            switch (status)
+            {
+                case DetectionCoverageStatus.Checked: return "Checked";
+                case DetectionCoverageStatus.NotChecked: return "Not checked";
+                case DetectionCoverageStatus.NotTechnicallyVerifiable:
+                    return "Not technically verifiable";
+                default: return "Unknown";
+            }
         }
     }
 }

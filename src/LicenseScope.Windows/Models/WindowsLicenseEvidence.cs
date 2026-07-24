@@ -10,6 +10,7 @@ namespace LicenseScope.Windows.Models
         public SlmgrXprParseResult Xpr { get; set; } = new SlmgrXprParseResult();
         public SlmgrDlvParseResult Dlv { get; set; } = new SlmgrDlvParseResult();
         public string Oa3ProductKey { get; set; } = string.Empty;
+        public string Oa3ProductKeyDescription { get; set; } = string.Empty;
         public string BackupProductKey { get; set; } = string.Empty;
         public string MaskedOa3Key => SensitiveDataMasker.MaskProductKey(Oa3ProductKey);
         public string MaskedBackupKey => SensitiveDataMasker.MaskProductKey(BackupProductKey);

@@ -19,7 +19,7 @@
             <StackPanel DockPanel.Dock="Left">
                 <TextBlock Text="License Scope" FontFamily="Segoe UI Semibold"
                            FontSize="28" Foreground="#4c1d95"/>
-                <TextBlock Text="Kiểm tra bản quyền máy tính ở chế độ chỉ đọc"
+                <TextBlock Text="Kiểm tra bản quyền máy tính phiên bản mở rộng của WinLic phát triển bởi Son Nguyen "
                            FontSize="13" Foreground="#6b7280" Margin="0,4,0,0"/>
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
@@ -71,6 +71,10 @@
                     Width="175" Height="34" Margin="8,0,0,0"
                     Click="CrackTrace_Click"
                     Background="#fefce8" Foreground="#854d0e"/>
+            <CheckBox x:Name="DeepForensicCheckBox"
+                      Content="Deep forensic scan"
+                      Margin="12,0,0,0" VerticalAlignment="Center"
+                      ToolTip="Tắt mặc định. Chỉ đọc các nguồn lịch sử allowlist sau khi người dùng xác nhận."/>
         </WrapPanel>
 
         <ProgressBar x:Name="ScanProgress" Grid.Row="3" Height="6" Minimum="0" Maximum="100"

@@ -3,6 +3,18 @@ using System.Collections.Generic;
 
 namespace LicenseScope.Windows.Models
 {
+    public sealed class WindowsActivationProductTrace
+    {
+        public string ProductName { get; set; } = string.Empty;
+        public string EditionDescription { get; set; } = string.Empty;
+        public string Channel { get; set; } = string.Empty;
+        public uint? LicenseStatus { get; set; }
+        public uint? GracePeriodRemaining { get; set; }
+        public DateTimeOffset? ExpirationDate { get; set; }
+        public string KmsHost { get; set; } = string.Empty;
+        public uint? KmsPort { get; set; }
+    }
+
     public sealed class WindowsActivationTrace
     {
         public string ProductName { get; set; } = string.Empty;
@@ -16,8 +28,11 @@ namespace LicenseScope.Windows.Models
         public bool IsPermanent { get; set; }
         public bool IndicatesUnlicensed { get; set; }
         public bool OemFirmwareKeyPresent { get; set; }
+        public string FirmwareEdition { get; set; } = string.Empty;
         public string KmsHost { get; set; } = string.Empty;
         public uint? KmsPort { get; set; }
+        public IReadOnlyList<WindowsActivationProductTrace> Products { get; set; } =
+            Array.Empty<WindowsActivationProductTrace>();
     }
 
     public sealed class CrackTraceArtifact
@@ -50,5 +65,8 @@ namespace LicenseScope.Windows.Models
         public IReadOnlyList<CrackTraceRegistryEvidence> RegistryValues { get; set; } =
             Array.Empty<CrackTraceRegistryEvidence>();
         public IReadOnlyList<string> UnavailableSources { get; set; } = Array.Empty<string>();
+        public bool DeepForensicScanPerformed { get; set; }
+        public IReadOnlyList<string> DeepForensicSourcesChecked { get; set; } =
+            Array.Empty<string>();
     }
 }

@@ -54,6 +54,11 @@ Kết quả offline có thể là `Licensed`, `Unlicensed`, `Expired`,
 `NeedsOnlineVerification`, `Unknown` hoặc `Error`. Một sản phẩm cần xác minh
 online không được tự động coi là không có bản quyền.
 
+Analyzer dấu vết tách riêng `ActivationState`, `TraceVerdict` và
+`ProvenanceVerdict`. `ACTIVATED` chỉ là trạng thái quan sát được;
+`TRACE_NOT_FOUND` không xác nhận nguồn gốc license và không chứng minh máy chưa
+từng dùng công cụ kích hoạt.
+
 ## Cài đặt và sử dụng
 
 1. Kiểm tra SHA-256 của bộ cài.
@@ -72,7 +77,12 @@ LicenseScope.Cli.exe --version
 LicenseScope.Cli.exe audit --all
 LicenseScope.Cli.exe audit --all --format json,csv,html --output .\reports
 LicenseScope.Cli.exe audit --all --no-evidence --quiet
+LicenseScope.Cli.exe audit --all --deep-forensic-scan --consent-forensic-read
 ```
+
+Deep forensic scan tắt mặc định. Nó chỉ đọc các nguồn lịch sử Windows nằm trong
+allowlist sau khi người dùng đồng ý rõ ràng; không quét file người dùng, không
+upload và không sửa hoặc xóa dữ liệu.
 
 Mã thoát của lệnh audit:
 

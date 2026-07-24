@@ -14,29 +14,59 @@ Kết quả là đánh giá kỹ thuật, không phải kết luận pháp lý. 
 một ngày hết hạn xa, Digital Entitlement, KMS doanh nghiệp hoặc một giá trị
 Registry đơn lẻ không đủ để kết luận hệ thống dùng công cụ kích hoạt trái phép.
 
-## Mức kết quả
+## Trạng thái và verdict
 
-- `CLEAN`: chưa có tín hiệu xấu.
+Trạng thái kích hoạt, dấu vết và nguồn gốc license là ba khái niệm riêng:
+
+- `ACTIVATED`: chỉ xác nhận Windows hiện báo đang kích hoạt.
+- `TRACE_NOT_FOUND`: chưa tìm thấy dấu vết có thể kiểm chứng trong phạm vi
+  nguồn đã kiểm tra; không có nghĩa là “an toàn”, “bản quyền hợp lệ” hoặc
+  “không sử dụng crack”.
 - `SUSPICIOUS`: có dấu hiệu yếu hoặc chưa đủ evidence độc lập.
-- `HIGH_RISK`: có ít nhất hai tín hiệu mạnh độc lập, hoặc một tín hiệu đang
-  hoạt động mang tính xác định.
-- `INCONCLUSIVE`: không đọc đủ một hoặc nhiều nguồn dữ liệu quan trọng.
+- `HIGH_RISK`: có ít nhất hai tín hiệu mạnh độc lập.
+- `INCONCLUSIVE`: không đọc đủ nguồn dữ liệu quan trọng hoặc Windows đang được
+  kích hoạt nhưng provenance không thể xác minh từ trạng thái hiện tại.
 - `SCAN_ERROR`: scanner chính không thể hoàn tất.
+
+`CONSISTENT_STATE` chỉ cho biết edition/channel quan sát được phù hợp với
+firmware OEM; nó không phải `VERIFIED_PROVENANCE`.
+
+Khi không có artifact, thông báo kết luận là:
+
+> KHÔNG PHÁT HIỆN DẤU VẾT: Trong phạm vi các phép kiểm tra hiện tại, chưa tìm
+> thấy dấu vết có thể kiểm chứng. Kết quả này không xác nhận nguồn gốc license
+> hoặc chứng minh hệ thống chưa từng sử dụng công cụ kích hoạt.
 
 ## Phạm vi chỉ đọc
 
-Scanner chỉ dùng WMI `SELECT`, Registry read-only, Event Log read-only,
+Scanner thường chỉ dùng WMI `SELECT`, Registry read-only,
 `slmgr.vbs /xpr`, `slmgr.vbs /dlv` và `schtasks /query /fo csv /v /nh`.
 Scanner không kích hoạt, cài/gỡ key, rearm, xóa KMS, sửa task, dừng service,
 xóa file hoặc sửa Registry.
+
+## Deep forensic scan
+
+Deep forensic scan tắt mặc định và chỉ chạy sau khi người dùng đồng ý rõ ràng.
+Chế độ này chỉ đọc:
+
+- event log cấp phép Windows có liên quan;
+- PowerShell Operational khi logging tồn tại;
+- lịch sử phát hiện Windows Defender có liên quan;
+- tên Prefetch khớp allowlist;
+- Amcache chỉ khi có thể truy vấn entry allowlist mà không duyệt inventory
+  không liên quan.
+
+Không quét file người dùng, không upload dữ liệu và không xóa hoặc sửa bất kỳ
+thứ gì. Nguồn không có, bị từ chối hoặc không thể truy vấn trong privacy
+boundary được báo `UNKNOWN`.
 
 `NoGenTicket` chỉ được đọc tại:
 
 `HKLM\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform`
 
 Microsoft tài liệu hóa giá trị này là policy **Turn off KMS Client Online AVS
-Validation**, nên sự hiện diện của nó được báo trung lập và không phải bằng
-chứng crack:
+Validation**. Đây chỉ là evidence không mang tính kết luận; riêng giá trị này
+không thể tạo `HIGH_RISK`:
 
 <https://learn.microsoft.com/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services#19-software-protection-platform>
 
@@ -55,5 +85,5 @@ Các property WMI bản quyền sử dụng bởi scanner được Microsoft mô
   ba có thể không phân biệt được chỉ từ evidence cục bộ.
 - Công cụ đã gỡ sạch có thể không còn dấu vết.
 - Danh sách đường dẫn/từ khóa là allowlist giới hạn; scanner không quét toàn ổ.
-- Event Log hoặc Scheduled Tasks có thể trả `UNKNOWN` khi quyền hiện tại không
+- Event Log, Amcache hoặc Scheduled Tasks có thể trả `UNKNOWN` khi quyền hiện tại không
   đủ, nhưng scanner không tự yêu cầu Administrator.

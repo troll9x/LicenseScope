@@ -9,5 +9,10 @@ namespace LicenseScope.Core.Contracts
         Task<CrackTraceAnalysisResult> AnalyzeAsync(
             SystemContext context,
             CancellationToken cancellationToken);
+
+        Task<CrackTraceAnalysisResult> AnalyzeAsync(
+            SystemContext context,
+            CrackTraceScanOptions options,
+            CancellationToken cancellationToken);
     }
 }
