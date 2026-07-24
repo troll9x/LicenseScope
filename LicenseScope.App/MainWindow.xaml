@@ -82,6 +82,19 @@
                   HeadersVisibility="Column" AlternatingRowBackground="#f5f3ff"
                   RowDetailsVisibilityMode="VisibleWhenSelected"
                   HorizontalScrollBarVisibility="Auto">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsLicensed}" Value="False">
+                            <Setter Property="Background" Value="#fecaca"/>
+                            <Setter Property="Foreground" Value="#7f1d1d"/>
+                            <Setter Property="BorderBrush" Value="#dc2626"/>
+                            <Setter Property="BorderThickness" Value="2,1,2,1"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Bộ quét" Binding="{Binding ScannerId}" Width="150"/>
                 <DataGridTextColumn Header="Nhà cung cấp" Binding="{Binding Vendor}" Width="110"/>
