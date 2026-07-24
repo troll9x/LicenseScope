@@ -69,6 +69,8 @@ $manifest = Get-Content (Join-Path $install 'installation-manifest.json') -Raw |
 if ($manifest.payload -ne $ExpectedPayload) { throw "Expected $ExpectedPayload, installed $($manifest.payload)." }
 if ($manifest.frameworkInstalledBySetup) { throw 'Smoke unexpectedly invoked the framework prerequisite.' }
 $cli = Join-Path $install 'LicenseScope.Cli.exe'
+$sample = Join-Path $install 'Samples\license-audit-simulation.json'
+if (-not (Test-Path -LiteralPath $sample -PathType Leaf)) { throw 'Installed simulation fixture is missing.' }
 $version = & $cli --version
 if ($LASTEXITCODE -ne 0 -or -not $version) { throw 'Installed CLI startup failed.' }
 $auditOutput = & $cli audit --all --format json,csv,html --output $reports --overwrite 2>&1

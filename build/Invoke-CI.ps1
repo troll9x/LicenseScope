@@ -4,7 +4,7 @@ function Run([scriptblock]$Command,[string]$Name){& $Command;if($LASTEXITCODE-ne
 Run {dotnet restore $sln --locked-mode --verbosity minimal} 'locked restore'
 $configs=if($Configuration-eq'All'){@('Debug','Release')}else{@($Configuration)}
 foreach($c in $configs){Run {dotnet build $sln -c $c --no-restore --verbosity minimal} "$c build";Run {dotnet test $sln -c $c --no-build --logger 'console;verbosity=minimal'} "$c tests"}
-foreach($p in $Platforms){if($p-ne'AnyCPU'){Run {dotnet build $sln -c Release --no-restore --verbosity minimal /p:PlatformTarget=$p /p:Prefer32Bit=false} "$p build"}}
+foreach($p in $Platforms){if($p-ne'AnyCPU'){Run {dotnet build $sln -c Release -t:Rebuild --no-restore --verbosity minimal /p:PlatformTarget=$p /p:Prefer32Bit=false} "$p build"}}
 Run {powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'installer\tests\InstallerPolicy.Tests.ps1')} 'installer policy'
 Run {powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'installer\tests\InstallerManifest.Tests.ps1')} 'prerequisite manifest'
 Run {powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'installer\tests\InstallerCoexistence.Tests.ps1')} 'installer coexistence policy'

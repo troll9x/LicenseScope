@@ -18,6 +18,8 @@ $checks = [ordered]@{
   'License Scope install directory' = $source.Contains('autopf64}\LicenseScope') -and $source.Contains('autopf32}\LicenseScope')
   'License Scope GUI executable' = $source -match 'ProductExe'
   'License Scope CLI executable' = $source -match 'CliExe'
+  'Architecture build forces rebuild' = (Get-Content (Join-Path $root 'build\Build-Installer.ps1') -Raw) -match '-t:Rebuild'
+  'Architecture check compares machine field' = (Get-Content (Join-Path $root 'build\Build-Installer.ps1') -Raw) -match '\.Machine -eq \$expected'
 }
 $failed = @($checks.GetEnumerator() | Where-Object { -not $_.Value })
 if ($failed) { throw ('Installer policy failures: ' + (($failed.Name) -join ', ')) }

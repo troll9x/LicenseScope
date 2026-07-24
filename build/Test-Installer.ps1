@@ -1,6 +1,9 @@
 [CmdletBinding()]
-param([string]$SetupPath = "$PSScriptRoot\..\artifacts\installer\LicenseScope-Setup.exe")
+param([string]$SetupPath = '')
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($SetupPath)) {
+  $SetupPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'artifacts\installer\LicenseScope-Setup.exe'
+}
 & "$PSScriptRoot\..\installer\tests\InstallerPolicy.Tests.ps1"
 & "$PSScriptRoot\..\installer\tests\InstallerManifest.Tests.ps1"
 if (-not (Test-Path $SetupPath)) { throw "Setup not found: $SetupPath" }

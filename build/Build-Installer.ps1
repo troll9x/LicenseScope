@@ -42,7 +42,7 @@ function Verify-Prerequisite {
 }
 function Copy-Payload([string]$Architecture, [string]$Destination) {
     Reset-Directory $Destination
-    dotnet build (Join-Path $repo 'LicenseScope.sln') -c $Configuration --no-restore --verbosity minimal /p:PlatformTarget=$Architecture /p:Prefer32Bit=false
+    dotnet build (Join-Path $repo 'LicenseScope.sln') -c $Configuration -t:Rebuild --no-restore --verbosity minimal /p:PlatformTarget=$Architecture /p:Prefer32Bit=false
     if ($LASTEXITCODE -ne 0) { throw "$Architecture build failed." }
     $sources = @(
         (Join-Path $repo "LicenseScope.App\bin\$Configuration\net48"),
@@ -51,15 +51,20 @@ function Copy-Payload([string]$Architecture, [string]$Destination) {
     foreach ($source in $sources) {
         Get-ChildItem -LiteralPath $source -File | Where-Object { $_.Extension -in '.exe','.dll','.config' } | Copy-Item -Destination $Destination -Force
     }
+    $sampleSource = Join-Path $repo "LicenseScope.App\bin\$Configuration\net48\Samples"
+    $sampleDestination = Join-Path $Destination 'Samples'
+    Assert-Condition (Test-Path -LiteralPath $sampleSource -PathType Container) "Samples directory missing from $Architecture application output."
+    Copy-Item -LiteralPath $sampleSource -Destination $sampleDestination -Recurse -Force
     foreach ($required in 'LicenseScope.App.exe','LicenseScope.Cli.exe') { Assert-Condition (Test-Path (Join-Path $Destination $required)) "$required missing from $Architecture payload." }
+    Assert-Condition (Test-Path (Join-Path $sampleDestination 'license-audit-simulation.json')) "Simulation fixture missing from $Architecture payload."
     $forbidden = Get-ChildItem $Destination -Recurse -File | Where-Object { $_.Extension -in '.pdb','.cs','.ps1','.trx' -or $_.Name -match 'Tests' }
     Assert-Condition ($null -eq $forbidden) "$Architecture payload contains forbidden files."
     $peTool = Join-Path $repo 'build\Get-PEArchitecture.ps1'
     $guiMachine = & $peTool (Join-Path $Destination 'LicenseScope.App.exe')
     $cliMachine = & $peTool (Join-Path $Destination 'LicenseScope.Cli.exe')
-    $expected = if ($Architecture -eq 'x86') { 'x86' } else { 'x64' }
-    Assert-Condition (($guiMachine -join '') -match $expected) "GUI PE architecture is not $expected."
-    Assert-Condition (($cliMachine -join '') -match $expected) "CLI PE architecture is not $expected."
+    $expected = if ($Architecture -eq 'x86') { 'X86' } else { 'X64' }
+    Assert-Condition ($guiMachine.Machine -eq $expected) "GUI PE architecture is $($guiMachine.Machine), expected $expected."
+    Assert-Condition ($cliMachine.Machine -eq $expected) "CLI PE architecture is $($cliMachine.Machine), expected $expected."
 }
 
 Assert-Condition (Test-Path -LiteralPath $InnoCompiler) "Inno Setup compiler not found: $InnoCompiler"
