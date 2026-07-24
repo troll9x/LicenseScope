@@ -13,62 +13,76 @@ namespace LicenseScope.Reporting.Tests
     public sealed class CrackTraceReportingTests
     {
         [TestMethod]
-        public void TextFormatterUsesAllRequiredPrefixes()
+        public void TextFormatterUsesOnlyBinaryOutcomeFields()
         {
-            var analysis = Analysis(CrackTraceVerdict.Suspicious,
-                Enum.GetValues(typeof(CrackTraceStatus))
-                    .Cast<CrackTraceStatus>()
-                    .Select((status, index) => Check(index + 1, status))
-                    .ToArray());
-            var text = string.Join("\n",
-                new CrackTraceTextFormatter().Format(analysis).Select(x => x.Text));
-            StringAssert.Contains(text, "[+]");
-            StringAssert.Contains(text, "[!]");
-            StringAssert.Contains(text, "[-]");
-            StringAssert.Contains(text, "[?]");
-            StringAssert.Contains(text, "[x]");
+            var checks = Enum.GetValues(typeof(CrackTraceStatus))
+                .Cast<CrackTraceStatus>()
+                .Select((status, index) => Check(index + 1, status))
+                .ToArray();
+            var text = string.Join(
+                "\n",
+                new CrackTraceTextFormatter()
+                    .Format(Analysis(CrackTraceVerdict.TraceDetected, checks))
+                    .Select(x => x.Text));
+
+            StringAssert.Contains(text, "ScanCompleted: CÓ");
+            StringAssert.Contains(text, "ActivationDetected: CÓ");
+            StringAssert.Contains(text, "TraceDetected: CÓ");
+            StringAssert.Contains(text, "ProvenanceVerified: KHÔNG");
+            Assert.IsFalse(text.Contains("SUSPICIOUS"));
+            Assert.IsFalse(text.Contains("HIGH_RISK"));
+            Assert.IsFalse(text.Contains("INCONCLUSIVE"));
         }
 
         [TestMethod]
-        public void JsonCsvAndHtmlContainSameVerdictAndSevenChecks()
+        public void JsonCsvAndHtmlContainSameBinaryFactsAndSevenChecks()
         {
             var checks = Enumerable.Range(1, 7)
-                .Select(order => Check(order, CrackTraceStatus.TraceNotFound))
+                .Select(order => Check(
+                    order,
+                    order == 1
+                        ? CrackTraceStatus.Detected
+                        : CrackTraceStatus.TraceNotFound))
                 .ToArray();
             var audit = new AuditResult
             {
                 StartedAt = DateTimeOffset.Parse("2026-01-02T03:04:05Z"),
                 CompletedAt = DateTimeOffset.Parse("2026-01-02T03:05:05Z"),
-                CrackTraceAnalysis = Analysis(CrackTraceVerdict.HighRisk, checks)
+                CrackTraceAnalysis =
+                    Analysis(CrackTraceVerdict.TraceDetected, checks)
             };
             var sanitizer = new AuditResultSanitizer();
             var json = Write(new JsonAuditReportWriter(sanitizer), "json", audit);
             var csv = Write(new CsvAuditReportWriter(sanitizer), "csv", audit);
             var html = Write(new HtmlAuditReportWriter(sanitizer), "html", audit);
+
+            StringAssert.Contains(json, "\"scanCompleted\":true");
+            StringAssert.Contains(json, "\"activationDetected\":true");
+            StringAssert.Contains(json, "\"traceDetected\":true");
+            StringAssert.Contains(json, "\"provenanceVerified\":false");
+            StringAssert.Contains(json, "\"matched\":true");
+            StringAssert.Contains(json, "\"checked\":true");
+            StringAssert.Contains(json, "\"uncheckedSourceDetails\"");
+            Assert.IsFalse(json.Contains("\"traceVerdict\""));
+            Assert.IsFalse(json.Contains("\"provenanceVerdict\""));
+
+            StringAssert.Contains(csv, "ScanCompleted,ActivationDetected,TraceDetected,ProvenanceVerified");
+            StringAssert.Contains(html, "<dt>TraceDetected</dt><dd>CÓ");
             foreach (var output in new[] { json, csv, html })
             {
-                StringAssert.Contains(output, "HIGH_RISK");
-                StringAssert.Contains(output, "ACTIVATED");
-                StringAssert.Contains(output, "UNVERIFIED");
-                StringAssert.Contains(output, "Current licensing state");
-                StringAssert.Contains(output, "Digital-license provenance");
                 for (var order = 1; order <= 7; order++)
                     StringAssert.Contains(output, "check-" + order);
+                Assert.IsFalse(output.Contains("SUSPICIOUS"));
+                Assert.IsFalse(output.Contains("HIGH_RISK"));
+                Assert.IsFalse(output.Contains("INCONCLUSIVE"));
             }
-            StringAssert.Contains(json, "\"status\":\"TraceNotFound\"");
-            StringAssert.Contains(json, "\"traceVerdict\":\"HIGH_RISK\"");
-            StringAssert.Contains(json, "\"detectionCoverage\"");
-            StringAssert.Contains(json, "\"blindSpots\"");
-            StringAssert.Contains(json, "\"evidence\"");
-            StringAssert.Contains(json, "\"confidence\"");
-            StringAssert.Contains(html, "class=\"trace tracenotfound\"");
         }
 
         [TestMethod]
-        public void GuiCliJsonCsvAndHtmlUseTheSameTraceVerdict()
+        public void GuiCliJsonCsvAndHtmlUseTheSameBinaryTraceFact()
         {
             var analysis = Analysis(
-                CrackTraceVerdict.Inconclusive,
+                CrackTraceVerdict.TraceNotFound,
                 new[] { Check(1, CrackTraceStatus.TraceNotFound) });
             var audit = new AuditResult { CrackTraceAnalysis = analysis };
             var text = string.Join(
@@ -86,9 +100,11 @@ namespace LicenseScope.Reporting.Tests
                 new HtmlAuditReportWriter(new AuditResultSanitizer()),
                 "html",
                 audit);
-            foreach (var output in new[] { text, json, csv, html })
-                StringAssert.Contains(output, "INCONCLUSIVE");
-            Assert.IsFalse(text.Contains("AN TOÀN"));
+
+            StringAssert.Contains(text, "TraceDetected: KHÔNG");
+            StringAssert.Contains(json, "\"traceDetected\":false");
+            StringAssert.Contains(csv, "TraceDetected");
+            StringAssert.Contains(html, "<dt>TraceDetected</dt><dd>KHÔNG");
         }
 
         [TestMethod]
@@ -101,20 +117,19 @@ namespace LicenseScope.Reporting.Tests
                 "token=super-secret",
                 @"C:\Users\alice\private"
             };
-            var analysis = Analysis(CrackTraceVerdict.Suspicious, new[] { check });
+            var analysis = Analysis(
+                CrackTraceVerdict.TraceDetected,
+                new[] { check });
             analysis.Evidence = new[]
             {
-                "account=private.user@example.com",
-                "key=AAAAA-BBBBB-CCCCC-DDDDD-ABCDE"
-            };
-            var audit = new AuditResult
-            {
-                CrackTraceAnalysis = analysis
+                "registry-interference | account=private.user@example.com",
+                "registry-interference | key=AAAAA-BBBBB-CCCCC-DDDDD-ABCDE"
             };
             var json = Write(
                 new JsonAuditReportWriter(new AuditResultSanitizer()),
                 "json",
-                audit);
+                new AuditResult { CrackTraceAnalysis = analysis });
+
             Assert.IsFalse(json.Contains("AAAAA-BBBBB"));
             Assert.IsFalse(json.Contains("super-secret"));
             Assert.IsFalse(json.Contains("private.user@example.com"));
@@ -123,7 +138,9 @@ namespace LicenseScope.Reporting.Tests
             StringAssert.Contains(json, "[REDACTED]");
         }
 
-        private static CrackTraceCheckResult Check(int order, CrackTraceStatus status)
+        private static CrackTraceCheckResult Check(
+            int order,
+            CrackTraceStatus status)
         {
             return new CrackTraceCheckResult
             {
@@ -131,6 +148,10 @@ namespace LicenseScope.Reporting.Tests
                 Id = "check-" + order,
                 DisplayName = "Check " + order,
                 Status = status,
+                Completed = status != CrackTraceStatus.Error &&
+                            status != CrackTraceStatus.Unknown,
+                Matched = status == CrackTraceStatus.Suspicious ||
+                          status == CrackTraceStatus.Detected,
                 Summary = "summary",
                 Confidence = 50
             };
@@ -142,6 +163,10 @@ namespace LicenseScope.Reporting.Tests
         {
             return new CrackTraceAnalysisResult
             {
+                ScanCompleted = true,
+                ActivationDetected = true,
+                TraceDetected = verdict == CrackTraceVerdict.TraceDetected,
+                ProvenanceVerified = false,
                 ActivationState = WindowsActivationState.Activated,
                 TraceVerdict = verdict,
                 ProvenanceVerdict = LicenseProvenanceVerdict.Unverified,
@@ -151,19 +176,27 @@ namespace LicenseScope.Reporting.Tests
                     {
                         Id = "current-licensing-state",
                         DisplayName = "Current licensing state",
-                        Status = DetectionCoverageStatus.Checked
+                        Status = DetectionCoverageStatus.Checked,
+                        Checked = true
                     },
                     new DetectionCoverageItem
                     {
                         Id = "digital-license-provenance",
                         DisplayName = "Digital-license provenance",
-                        Status = DetectionCoverageStatus.NotTechnicallyVerifiable
+                        Status =
+                            DetectionCoverageStatus.NotTechnicallyVerifiable,
+                        Checked = false
                     }
                 },
-                BlindSpots = new[] { "provenance blind spot" },
-                Evidence = new[] { "Activation state: ACTIVATED" },
+                BlindSpots = new[] { "provenance source was not checked" },
+                Evidence = new[]
+                {
+                    "check-1 | Registry: NoGenTicket=1"
+                },
                 Confidence = 50,
-                VerdictSummary = "verdict summary",
+                VerdictSummary = verdict == CrackTraceVerdict.TraceDetected
+                    ? "CÓ DẤU VẾT"
+                    : "KHÔNG PHÁT HIỆN DẤU VẾT",
                 Checks = checks
             };
         }
@@ -173,7 +206,9 @@ namespace LicenseScope.Reporting.Tests
             string extension,
             AuditResult audit)
         {
-            var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + "." + extension);
+            var path = Path.Combine(
+                Path.GetTempPath(),
+                Guid.NewGuid() + "." + extension);
             try
             {
                 var result = writer.WriteAsync(

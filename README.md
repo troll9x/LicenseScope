@@ -54,10 +54,10 @@ Kết quả offline có thể là `Licensed`, `Unlicensed`, `Expired`,
 `NeedsOnlineVerification`, `Unknown` hoặc `Error`. Một sản phẩm cần xác minh
 online không được tự động coi là không có bản quyền.
 
-Analyzer dấu vết tách riêng `ActivationState`, `TraceVerdict` và
-`ProvenanceVerdict`. `ACTIVATED` chỉ là trạng thái quan sát được;
-`TRACE_NOT_FOUND` không xác nhận nguồn gốc license và không chứng minh máy chưa
-từng dùng công cụ kích hoạt.
+Analyzer dấu vết xuất bốn sự kiện nhị phân: `ScanCompleted`,
+`ActivationDetected`, `TraceDetected` và `ProvenanceVerified`. `TraceDetected`
+chỉ trả lời một việc khách quan: có hay không có bằng chứng khớp allowlist.
+Mọi kết quả `CÓ` đều kèm scanner ID, nguồn và giá trị evidence cụ thể.
 
 ## Cài đặt và sử dụng
 

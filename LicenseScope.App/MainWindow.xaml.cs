@@ -373,9 +373,10 @@ namespace LicenseScope.App
                 RenderCrackTrace(analysis);
                 CrackTracePanel.Visibility = Visibility.Visible;
                 CrackTracePanel.IsExpanded = true;
-                StatusText.Text = "Phân tích hoàn tất: " +
-                                  CrackTraceVerdictNames.ToMachineValue(
-                                      analysis.TraceVerdict) + ".";
+                StatusText.Text = "Phân tích hoàn tất: TraceDetected=" +
+                                  (analysis.TraceDetected ? "CÓ" : "KHÔNG") +
+                                  "; ScanCompleted=" +
+                                  (analysis.ScanCompleted ? "CÓ" : "KHÔNG") + ".";
             }
             catch (OperationCanceledException)
             {

@@ -15,10 +15,7 @@ namespace LicenseScope.Core.Models
     public enum CrackTraceVerdict
     {
         TraceNotFound,
-        Suspicious,
-        HighRisk,
-        Inconclusive,
-        ScanError
+        TraceDetected
     }
 
     public enum WindowsActivationState
@@ -54,6 +51,7 @@ namespace LicenseScope.Core.Models
         public string Id { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public DetectionCoverageStatus Status { get; set; }
+        public bool Checked { get; set; }
         public string Detail { get; set; } = string.Empty;
     }
 
@@ -65,6 +63,8 @@ namespace LicenseScope.Core.Models
         public CrackTraceStatus Status { get; set; }
         public string Summary { get; set; } = string.Empty;
         public IReadOnlyList<string> Evidence { get; set; } = Array.Empty<string>();
+        public bool Completed { get; set; }
+        public bool Matched { get; set; }
         public int Confidence { get; set; }
         public bool IsStrongSignal { get; set; }
         public bool IsDefinitiveActiveSignal { get; set; }
@@ -77,6 +77,10 @@ namespace LicenseScope.Core.Models
         public DateTimeOffset CompletedAt { get; set; }
         public IReadOnlyList<CrackTraceCheckResult> Checks { get; set; } =
             Array.Empty<CrackTraceCheckResult>();
+        public bool ScanCompleted { get; set; }
+        public bool ActivationDetected { get; set; }
+        public bool TraceDetected { get; set; }
+        public bool ProvenanceVerified { get; set; }
         public WindowsActivationState ActivationState { get; set; }
         public CrackTraceVerdict TraceVerdict { get; set; }
         public LicenseProvenanceVerdict ProvenanceVerdict { get; set; }
@@ -95,11 +99,8 @@ namespace LicenseScope.Core.Models
         {
             switch (verdict)
             {
-                case CrackTraceVerdict.TraceNotFound: return "TRACE_NOT_FOUND";
-                case CrackTraceVerdict.Suspicious: return "SUSPICIOUS";
-                case CrackTraceVerdict.HighRisk: return "HIGH_RISK";
-                case CrackTraceVerdict.Inconclusive: return "INCONCLUSIVE";
-                default: return "SCAN_ERROR";
+                case CrackTraceVerdict.TraceDetected: return "TRACE_DETECTED";
+                default: return "TRACE_NOT_DETECTED";
             }
         }
 

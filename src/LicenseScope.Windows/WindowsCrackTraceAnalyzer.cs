@@ -75,30 +75,36 @@ namespace LicenseScope.Windows
                 };
                 var activationState = DetermineActivationState(snapshot.Activation);
                 var provenanceVerdict = DetermineProvenance(snapshot.Activation);
-                var verdict = CrackTraceVerdictEvaluator.Evaluate(
-                    checks,
-                    activationState,
-                    provenanceVerdict);
-                if (verdict == CrackTraceVerdict.TraceNotFound &&
-                    snapshot.UnavailableSources.Count > 0)
-                    verdict = CrackTraceVerdict.Inconclusive;
+                var verdict = CrackTraceVerdictEvaluator.Evaluate(checks);
+                var scanCompleted = checks.All(x => x.Completed) &&
+                                    (!options.DeepForensicScan ||
+                                     !snapshot.UnavailableSources.Any(
+                                         IsDeepUnavailable));
+                var traceDetected = verdict == CrackTraceVerdict.TraceDetected;
+                var evidence = BuildEvidence(checks);
                 return new CrackTraceAnalysisResult
                 {
                     StartedAt = started,
                     CompletedAt = DateTimeOffset.UtcNow,
                     Checks = checks,
+                    ScanCompleted = scanCompleted,
+                    ActivationDetected =
+                        activationState == WindowsActivationState.Activated,
+                    TraceDetected = traceDetected,
+                    ProvenanceVerified = false,
                     ActivationState = activationState,
                     TraceVerdict = verdict,
                     ProvenanceVerdict = provenanceVerdict,
                     DetectionCoverage = BuildCoverage(snapshot, options),
                     BlindSpots = BuildBlindSpots(snapshot, options),
-                    Evidence = BuildEvidence(snapshot, checks, activationState),
+                    Evidence = evidence,
                     Confidence = CrackTraceVerdictEvaluator.Confidence(verdict, checks),
                     DeepForensicScanEnabled =
                         options.DeepForensicScan && snapshot.DeepForensicScanPerformed,
                     VerdictSummary = CrackTraceVerdictEvaluator.Summary(
-                        verdict,
-                        activationState)
+                        traceDetected,
+                        scanCompleted,
+                        evidence.Count)
                 };
             }
             catch (OperationCanceledException) { throw; }
@@ -120,8 +126,12 @@ namespace LicenseScope.Windows
                     StartedAt = started,
                     CompletedAt = DateTimeOffset.UtcNow,
                     Checks = checks,
+                    ScanCompleted = false,
+                    ActivationDetected = false,
+                    TraceDetected = false,
+                    ProvenanceVerified = false,
                     ActivationState = WindowsActivationState.Unknown,
-                    TraceVerdict = CrackTraceVerdict.ScanError,
+                    TraceVerdict = CrackTraceVerdict.TraceNotFound,
                     ProvenanceVerdict = LicenseProvenanceVerdict.Inconclusive,
                     DetectionCoverage = ErrorCoverage(),
                     BlindSpots = new[]
@@ -132,8 +142,9 @@ namespace LicenseScope.Windows
                     Confidence = 0,
                     DeepForensicScanEnabled = false,
                     VerdictSummary = CrackTraceVerdictEvaluator.Summary(
-                        CrackTraceVerdict.ScanError,
-                        WindowsActivationState.Unknown)
+                        false,
+                        false,
+                        0)
                 };
             }
         }
@@ -164,7 +175,7 @@ namespace LicenseScope.Windows
 
             if (suspiciousHost || active.Length > 0)
                 return Result(1, "kms-crack", "KMS Crack", CrackTraceStatus.Suspicious,
-                    "Có dấu hiệu KMS cần xác minh với quản trị viên hệ thống; chưa đủ bằng chứng kết luận.",
+                    "Quy tắc allowlist KMS khớp ít nhất một host hoặc artifact.",
                     evidence, 60);
 
             if (!string.IsNullOrWhiteSpace(activation.KmsHost))
@@ -200,12 +211,12 @@ namespace LicenseScope.Windows
 
             if (weakArtifacts.Select(x => x.Source).Distinct(StringComparer.OrdinalIgnoreCase).Count() >= 2)
                 return Result(2, "mas-hwid", "MAS / HWID", CrackTraceStatus.Suspicious,
-                    "Có nhiều artifact lịch sử nhưng chưa đủ để phân biệt với quy trình Windows hợp lệ.",
+                    "Artifact MAS/HWID khớp allowlist ở ít nhất hai nguồn.",
                     evidence, 55);
 
             if (weakArtifacts.Length > 0)
-                return Result(2, "mas-hwid", "MAS / HWID", CrackTraceStatus.Unknown,
-                    "Có artifact đơn lẻ không mang tính kết luận; Digital Entitlement không tự chứng minh MAS.",
+                return Result(2, "mas-hwid", "MAS / HWID", CrackTraceStatus.Suspicious,
+                    "Có ít nhất một artifact MAS/HWID khớp allowlist.",
                     evidence, 30);
 
             if (IsDigitalEntitlementPattern(snapshot.Activation))
@@ -243,7 +254,7 @@ namespace LicenseScope.Windows
                     evidence, 90, strong: true);
             if (expiryAnomaly || volumePermanent || artifact)
                 return Result(3, "kms38-hook", "KMS38 Hook", CrackTraceStatus.Suspicious,
-                    "Có dấu hiệu tương thích với KMS38 nhưng chưa đủ evidence kết hợp.",
+                    "Có ít nhất một quy tắc KMS38 khớp dữ liệu quan sát được.",
                     evidence, 50);
             return Result(3, "kms38-hook", "KMS38 Hook", CrackTraceStatus.TraceNotFound,
                 "Không tìm thấy tổ hợp dấu vết KMS38 trong phạm vi kiểm tra hiện tại.", evidence, 55);
@@ -317,7 +328,7 @@ namespace LicenseScope.Windows
                 !activation.ExpirationDate.HasValue;
             if (contradictory || kmsPermanentWithoutLease || editionMismatch)
                 return Result(4, "license-logic", "Logic bản quyền", CrackTraceStatus.Suspicious,
-                    "Kênh và trạng thái bản quyền có điểm chưa nhất quán; cần xác minh thêm.",
+                    "Có ít nhất một quy tắc đối chiếu edition/channel/state không khớp.",
                     evidence, 65);
 
             if (!activation.LicenseStatus.HasValue || string.IsNullOrWhiteSpace(activation.Channel))
@@ -363,11 +374,11 @@ namespace LicenseScope.Windows
             if (historical.Length > 0)
                 return Result(5, "tool-paths", "Thư mục công cụ",
                     CrackTraceStatus.Suspicious,
-                    "Nguồn lịch sử allowlist có dấu vết thực thi cần xác minh; không đủ để tự kết luận HIGH_RISK.",
+                    "Có ít nhất một dấu vết thực thi lịch sử khớp allowlist.",
                     evidence, 55);
             if (snapshot.Paths.Any(x => Contains(x, "GenuineTicket")))
-                return Result(5, "tool-paths", "Thư mục công cụ", CrackTraceStatus.Unknown,
-                    "GenuineTicket tồn tại nhưng riêng artifact Microsoft này không đủ để kết luận.",
+                return Result(5, "tool-paths", "Thư mục công cụ", CrackTraceStatus.Suspicious,
+                    "Có artifact GenuineTicket khớp quy tắc quan sát.",
                     evidence, 30);
             return Result(5, "tool-paths", "Thư mục công cụ",
                 CrackTraceStatus.TraceNotFound,
@@ -413,7 +424,7 @@ namespace LicenseScope.Windows
             if (toolKeys.Length > 0)
                 return Result(7, "registry-interference", "Can thiệp Registry",
                     CrackTraceStatus.Detected,
-                    "Tìm thấy khóa registry chính xác trong allowlist công cụ kích hoạt; riêng nhóm registry không thể tự tạo verdict HIGH_RISK.",
+                    "Tìm thấy khóa registry chính xác trong allowlist công cụ kích hoạt.",
                     toolKeys.Select(x => "Registry key: " + x.Path),
                     75,
                     strong: true);
@@ -423,7 +434,7 @@ namespace LicenseScope.Windows
             if (noGenTicket != null && noGenTicket.Present)
                 return Result(7, "registry-interference", "Can thiệp Registry",
                     CrackTraceStatus.Suspicious,
-                    "NoGenTicket là tín hiệu registry đơn lẻ, không mang tính kết luận và không thể tự tạo verdict HIGH_RISK.",
+                    "Tìm thấy giá trị NoGenTicket tại registry path được kiểm tra.",
                     new[]
                     {
                         "Registry value: " + noGenTicket.Path + "\\" + noGenTicket.Name +
@@ -560,6 +571,7 @@ namespace LicenseScope.Windows
                 Id = id,
                 DisplayName = name,
                 Status = status,
+                Checked = status == DetectionCoverageStatus.Checked,
                 Detail = detail
             };
         }
@@ -615,18 +627,12 @@ namespace LicenseScope.Windows
         }
 
         private static IReadOnlyList<string> BuildEvidence(
-            CrackTraceEvidenceSnapshot snapshot,
-            IEnumerable<CrackTraceCheckResult> checks,
-            WindowsActivationState activationState)
+            IEnumerable<CrackTraceCheckResult> checks)
         {
-            var values = new List<string>
-            {
-                "Activation state: " +
-                CrackTraceVerdictNames.ToMachineValue(activationState)
-            };
-            if (!string.IsNullOrWhiteSpace(snapshot.Activation.Channel))
-                values.Add("Activation channel: " + snapshot.Activation.Channel);
-            values.AddRange(checks.SelectMany(x => x.Evidence));
+            var values = (checks ?? Array.Empty<CrackTraceCheckResult>())
+                .Where(x => x.Matched)
+                .SelectMany(check => check.Evidence.Select(
+                    value => check.Id + " | " + value));
             return values.Select(SensitiveDataMasker.SanitizeDiagnosticText)
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -694,6 +700,9 @@ namespace LicenseScope.Windows
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
+                Completed = status != CrackTraceStatus.Error && !incomplete,
+                Matched = status == CrackTraceStatus.Suspicious ||
+                          status == CrackTraceStatus.Detected,
                 Confidence = Math.Max(0, Math.Min(100, confidence)),
                 IsStrongSignal = strong,
                 IsDefinitiveActiveSignal = definitive,
@@ -795,28 +804,14 @@ namespace LicenseScope.Windows
     public static class CrackTraceVerdictEvaluator
     {
         public static CrackTraceVerdict Evaluate(
-            IEnumerable<CrackTraceCheckResult> checks,
-            WindowsActivationState activationState,
-            LicenseProvenanceVerdict provenanceVerdict)
+            IEnumerable<CrackTraceCheckResult> checks)
         {
             var values = (checks ?? Array.Empty<CrackTraceCheckResult>()).ToArray();
-            if (values.Length == 0 || values.Count(x => x.Status == CrackTraceStatus.Error) >= 4)
-                return CrackTraceVerdict.ScanError;
-            var detected = values.Where(x => x.Status == CrackTraceStatus.Detected).ToArray();
-            if (detected.Where(x => x.IsStrongSignal)
-                    .Select(x => x.Id)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Count() >= 2)
-                return CrackTraceVerdict.HighRisk;
-            if (detected.Length > 0 || values.Any(x => x.Status == CrackTraceStatus.Suspicious))
-                return CrackTraceVerdict.Suspicious;
-            if (values.Any(x => x.IsDataIncomplete))
-                return CrackTraceVerdict.Inconclusive;
-            if (activationState == WindowsActivationState.Activated &&
-                (provenanceVerdict == LicenseProvenanceVerdict.Unverified ||
-                 provenanceVerdict == LicenseProvenanceVerdict.ConsistentState))
-                return CrackTraceVerdict.Inconclusive;
-            return CrackTraceVerdict.TraceNotFound;
+            return values.Any(x =>
+                    x.Status == CrackTraceStatus.Detected ||
+                    x.Status == CrackTraceStatus.Suspicious)
+                ? CrackTraceVerdict.TraceDetected
+                : CrackTraceVerdict.TraceNotFound;
         }
 
         public static int Confidence(
@@ -824,39 +819,27 @@ namespace LicenseScope.Windows
             IEnumerable<CrackTraceCheckResult> checks)
         {
             var values = (checks ?? Array.Empty<CrackTraceCheckResult>()).ToArray();
-            if (verdict == CrackTraceVerdict.ScanError) return 0;
-            if (verdict == CrackTraceVerdict.TraceNotFound) return 50;
-            if (verdict == CrackTraceVerdict.Inconclusive) return 35;
+            if (verdict == CrackTraceVerdict.TraceNotFound) return 0;
             var signal = values.Where(x =>
                     x.Status == CrackTraceStatus.Detected ||
                     x.Status == CrackTraceStatus.Suspicious)
                 .Select(x => x.Confidence)
                 .DefaultIfEmpty(25)
                 .Max();
-            return verdict == CrackTraceVerdict.HighRisk
-                ? Math.Max(80, signal)
-                : Math.Min(75, signal);
+            return signal;
         }
 
         public static string Summary(
-            CrackTraceVerdict verdict,
-            WindowsActivationState activationState)
+            bool traceDetected,
+            bool scanCompleted,
+            int evidenceCount)
         {
-            switch (verdict)
-            {
-                case CrackTraceVerdict.TraceNotFound:
-                    return "KHÔNG PHÁT HIỆN DẤU VẾT: Trong phạm vi các phép kiểm tra hiện tại, chưa tìm thấy dấu vết có thể kiểm chứng. Kết quả này không xác nhận nguồn gốc license hoặc chứng minh hệ thống chưa từng sử dụng công cụ kích hoạt.";
-                case CrackTraceVerdict.Suspicious:
-                    return "CẦN KIỂM TRA: Phát hiện một số dấu hiệu nghi vấn nhưng chưa đủ bằng chứng kết luận máy đang sử dụng công cụ kích hoạt trái phép.";
-                case CrackTraceVerdict.HighRisk:
-                    return "CẢNH BÁO NGUY CƠ CAO: Phát hiện nhiều dấu vết độc lập cho thấy hệ thống bản quyền có thể đã bị can thiệp.";
-                case CrackTraceVerdict.Inconclusive:
-                    return activationState == WindowsActivationState.Activated
-                        ? "KHÔNG THỂ KẾT LUẬN: Windows đang được kích hoạt, nhưng trạng thái hiện tại không đủ để phân biệt license hợp lệ với một số phương pháp tạo digital entitlement."
-                        : "KHÔNG THỂ KẾT LUẬN: Một số nguồn dữ liệu không thể đọc đầy đủ hoặc trạng thái kích hoạt chưa xác định.";
-                default:
-                    return "LỖI QUÉT: Không thể hoàn tất phân tích dấu vết.";
-            }
+            if (traceDetected)
+                return "CÓ DẤU VẾT: Phát hiện " + evidenceCount +
+                       " bằng chứng khớp allowlist. Xem mục Evidence để đối chiếu nguồn và giá trị cụ thể.";
+            return scanCompleted
+                ? "KHÔNG PHÁT HIỆN DẤU VẾT: Không có bằng chứng nào khớp allowlist trong các nguồn đã kiểm tra."
+                : "KHÔNG PHÁT HIỆN DẤU VẾT TRONG CÁC PHÉP KIỂM TRA HOÀN TẤT. ScanCompleted: KHÔNG.";
         }
     }
 }

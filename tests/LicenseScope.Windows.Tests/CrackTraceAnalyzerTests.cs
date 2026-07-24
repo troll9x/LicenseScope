@@ -39,7 +39,11 @@ namespace LicenseScope.Windows.Tests
                 Activation = ConsistentRetailActivation()
             });
             Assert.AreEqual(WindowsActivationState.Activated, result.ActivationState);
-            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceNotFound, result.TraceVerdict);
+            Assert.IsTrue(result.ScanCompleted);
+            Assert.IsTrue(result.ActivationDetected);
+            Assert.IsFalse(result.TraceDetected);
+            Assert.IsFalse(result.ProvenanceVerified);
             Assert.AreEqual(
                 LicenseProvenanceVerdict.Unverified,
                 result.ProvenanceVerdict);
@@ -50,7 +54,7 @@ namespace LicenseScope.Windows.Tests
         }
 
         [TestMethod]
-        public async Task OneWeakTaskNameProducesSuspiciousOnly()
+        public async Task OneAllowlistedTaskNameProducesBinaryTraceDetected()
         {
             var result = await Analyze(new CrackTraceEvidenceSnapshot
             {
@@ -67,14 +71,16 @@ namespace LicenseScope.Windows.Tests
                     }
                 }
             });
-            Assert.AreEqual(CrackTraceVerdict.Suspicious, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceDetected, result.TraceVerdict);
+            Assert.IsTrue(result.TraceDetected);
+            Assert.IsTrue(result.Evidence.Any(x => x.StartsWith("scheduled-tasks |")));
             Assert.AreEqual(
                 CrackTraceStatus.Suspicious,
                 result.Checks.Single(x => x.Order == 6).Status);
         }
 
         [TestMethod]
-        public async Task TwoIndependentStrongSignalsProduceHighRisk()
+        public async Task TwoIndependentStrongSignalsProduceTraceDetected()
         {
             var result = await Analyze(new CrackTraceEvidenceSnapshot
             {
@@ -102,7 +108,8 @@ namespace LicenseScope.Windows.Tests
                     }
                 }
             });
-            Assert.AreEqual(CrackTraceVerdict.HighRisk, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceDetected, result.TraceVerdict);
+            Assert.IsTrue(result.TraceDetected);
             Assert.IsTrue(result.Checks.Count(x =>
                 x.Status == CrackTraceStatus.Detected && x.IsStrongSignal) >= 2);
         }
@@ -128,8 +135,10 @@ namespace LicenseScope.Windows.Tests
             var registry = result.Checks.Single(x => x.Order == 7);
             Assert.AreEqual(CrackTraceStatus.Suspicious, registry.Status);
             Assert.IsFalse(registry.IsStrongSignal);
-            Assert.AreEqual(CrackTraceVerdict.Suspicious, result.TraceVerdict);
-            Assert.AreNotEqual(CrackTraceVerdict.HighRisk, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceDetected, result.TraceVerdict);
+            Assert.IsTrue(result.TraceDetected);
+            Assert.IsTrue(result.Evidence.Any(x =>
+                x.StartsWith("registry-interference |")));
         }
 
         [TestMethod]
@@ -145,7 +154,7 @@ namespace LicenseScope.Windows.Tests
             Assert.AreEqual(
                 CrackTraceStatus.TraceNotFound,
                 result.Checks.Single(x => x.Order == 1).Status);
-            Assert.AreNotEqual(CrackTraceVerdict.HighRisk, result.TraceVerdict);
+            Assert.IsFalse(result.TraceDetected);
         }
 
         [TestMethod]
@@ -158,7 +167,8 @@ namespace LicenseScope.Windows.Tests
             var mas = result.Checks.Single(x => x.Order == 2);
             Assert.AreEqual(CrackTraceStatus.TraceNotFound, mas.Status);
             StringAssert.Contains(mas.Summary, "không chứng minh nguồn gốc");
-            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceNotFound, result.TraceVerdict);
+            Assert.IsFalse(result.TraceDetected);
         }
 
         [TestMethod]
@@ -173,7 +183,7 @@ namespace LicenseScope.Windows.Tests
         }
 
         [TestMethod]
-        public async Task SourceFailureReturnsStructuredScanError()
+        public async Task SourceFailureReturnsBinaryIncompleteScan()
         {
             var analyzer = new WindowsCrackTraceAnalyzer(new ThrowingSource());
             var result = await analyzer.AnalyzeAsync(
@@ -181,7 +191,9 @@ namespace LicenseScope.Windows.Tests
                 CancellationToken.None);
             Assert.AreEqual(7, result.Checks.Count);
             Assert.IsTrue(result.Checks.All(x => x.Status == CrackTraceStatus.Error));
-            Assert.AreEqual(CrackTraceVerdict.ScanError, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceNotFound, result.TraceVerdict);
+            Assert.IsFalse(result.ScanCompleted);
+            Assert.IsFalse(result.TraceDetected);
         }
 
         [TestMethod]
@@ -203,7 +215,9 @@ namespace LicenseScope.Windows.Tests
             Assert.AreEqual(
                 CrackTraceStatus.Unknown,
                 result.Checks.Single(x => x.Order == 7).Status);
-            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceNotFound, result.TraceVerdict);
+            Assert.IsFalse(result.ScanCompleted);
+            Assert.IsFalse(result.TraceDetected);
             Assert.IsFalse(result.VerdictSummary.Contains("AN TOÀN"));
         }
 
@@ -234,24 +248,30 @@ namespace LicenseScope.Windows.Tests
             Assert.AreEqual(
                 LicenseProvenanceVerdict.ConsistentState,
                 result.ProvenanceVerdict);
-            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceNotFound, result.TraceVerdict);
+            Assert.IsTrue(result.ActivationDetected);
+            Assert.IsFalse(result.TraceDetected);
+            Assert.IsFalse(result.ProvenanceVerified);
             Assert.AreNotEqual(
                 "VERIFIED",
                 CrackTraceVerdictNames.ToMachineValue(result.ProvenanceVerdict));
         }
 
         [TestMethod]
-        public async Task HwidLikeDigitalActivationWithoutArtifactsIsInconclusive()
+        public async Task HwidLikeDigitalActivationWithoutArtifactsReportsNoTraceMatch()
         {
             var activation = ConsistentRetailActivation();
             activation.OemFirmwareKeyPresent = false;
             var result = await Analyze(
                 new CrackTraceEvidenceSnapshot { Activation = activation });
             Assert.AreEqual(WindowsActivationState.Activated, result.ActivationState);
-            Assert.AreEqual(CrackTraceVerdict.Inconclusive, result.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceNotFound, result.TraceVerdict);
+            Assert.IsTrue(result.ActivationDetected);
+            Assert.IsFalse(result.TraceDetected);
+            Assert.IsFalse(result.ProvenanceVerified);
             StringAssert.StartsWith(
                 result.VerdictSummary,
-                "KHÔNG THỂ KẾT LUẬN:");
+                "KHÔNG PHÁT HIỆN DẤU VẾT:");
         }
 
         [TestMethod]
@@ -285,7 +305,9 @@ namespace LicenseScope.Windows.Tests
                 new SystemContext { OsName = "Windows" },
                 new CrackTraceScanOptions { DeepForensicScan = true },
                 CancellationToken.None);
-            Assert.AreEqual(CrackTraceVerdict.ScanError, withoutConsent.TraceVerdict);
+            Assert.AreEqual(CrackTraceVerdict.TraceNotFound, withoutConsent.TraceVerdict);
+            Assert.IsFalse(withoutConsent.ScanCompleted);
+            Assert.IsFalse(withoutConsent.TraceDetected);
             Assert.AreEqual(0, source.DeepCalls);
 
             var withConsent = await analyzer.AnalyzeAsync(
@@ -301,8 +323,9 @@ namespace LicenseScope.Windows.Tests
                 DetectionCoverageStatus.Unknown,
                 withConsent.DetectionCoverage.Single(x =>
                     x.Id == "historical-execution-traces").Status);
-            Assert.IsFalse(withConsent.TraceVerdict ==
-                           CrackTraceVerdict.TraceNotFound);
+            Assert.AreEqual(CrackTraceVerdict.TraceNotFound, withConsent.TraceVerdict);
+            Assert.IsFalse(withConsent.ScanCompleted);
+            Assert.IsFalse(withConsent.TraceDetected);
         }
 
         [TestMethod]
@@ -314,6 +337,8 @@ namespace LicenseScope.Windows.Tests
                 DetectionCoverageStatus.Checked,
                 result.DetectionCoverage.Single(x =>
                     x.Id == "current-licensing-state").Status);
+            Assert.IsTrue(result.DetectionCoverage.Single(x =>
+                x.Id == "current-licensing-state").Checked);
             Assert.AreEqual(
                 DetectionCoverageStatus.Checked,
                 result.DetectionCoverage.Single(x =>
@@ -330,11 +355,17 @@ namespace LicenseScope.Windows.Tests
                 DetectionCoverageStatus.NotTechnicallyVerifiable,
                 result.DetectionCoverage.Single(x =>
                     x.Id == "digital-license-provenance").Status);
+            Assert.IsFalse(result.DetectionCoverage.Single(x =>
+                x.Id == "digital-license-provenance").Checked);
             Assert.IsTrue(result.BlindSpots.Count > 0);
-            Assert.IsTrue(result.Evidence.Count > 0);
+            Assert.AreEqual(0, result.Evidence.Count);
             Assert.IsTrue(result.Confidence >= 0);
+            Assert.IsTrue(result.ScanCompleted);
+            Assert.IsFalse(result.ActivationDetected);
+            Assert.IsFalse(result.TraceDetected);
+            Assert.IsFalse(result.ProvenanceVerified);
             Assert.AreEqual(
-                "TRACE_NOT_FOUND",
+                "TRACE_NOT_DETECTED",
                 CrackTraceVerdictNames.ToMachineValue(result.TraceVerdict));
         }
 

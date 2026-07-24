@@ -1,4 +1,4 @@
-# Phân tích dấu vết crack Windows
+# Phân tích dấu vết kích hoạt Windows
 
 Nút **Phân tích dấu vết crack** chạy bảy nhóm kiểm tra chỉ đọc:
 
@@ -10,32 +10,31 @@ Nút **Phân tích dấu vết crack** chạy bảy nhóm kiểm tra chỉ đọ
 6. Tác vụ ẩn (Scheduled Tasks)
 7. Can thiệp Registry
 
-Kết quả là đánh giá kỹ thuật, không phải kết luận pháp lý. Một dấu vết yếu,
-một ngày hết hạn xa, Digital Entitlement, KMS doanh nghiệp hoặc một giá trị
-Registry đơn lẻ không đủ để kết luận hệ thống dùng công cụ kích hoạt trái phép.
+## Kết quả nhị phân
 
-## Trạng thái và verdict
+Analyzer không suy đoán hợp pháp hay trái phép. Nó ghi nhận bốn sự kiện khách
+quan dưới dạng `true/false` hoặc `CÓ/KHÔNG`:
 
-Trạng thái kích hoạt, dấu vết và nguồn gốc license là ba khái niệm riêng:
+- `ScanCompleted`: các nguồn bắt buộc của chế độ quét đã đọc xong hay chưa.
+- `ActivationDetected`: Windows có báo trạng thái kích hoạt hay không.
+- `TraceDetected`: có ít nhất một bằng chứng khớp allowlist hay không.
+- `ProvenanceVerified`: có bằng chứng xác minh nguồn gốc license hay không.
 
-- `ACTIVATED`: chỉ xác nhận Windows hiện báo đang kích hoạt.
-- `TRACE_NOT_FOUND`: chưa tìm thấy dấu vết có thể kiểm chứng trong phạm vi
-  nguồn đã kiểm tra; không có nghĩa là “an toàn”, “bản quyền hợp lệ” hoặc
-  “không sử dụng crack”.
-- `SUSPICIOUS`: có dấu hiệu yếu hoặc chưa đủ evidence độc lập.
-- `HIGH_RISK`: có ít nhất hai tín hiệu mạnh độc lập.
-- `INCONCLUSIVE`: không đọc đủ nguồn dữ liệu quan trọng hoặc Windows đang được
-  kích hoạt nhưng provenance không thể xác minh từ trạng thái hiện tại.
-- `SCAN_ERROR`: scanner chính không thể hoàn tất.
+`TraceDetected: CÓ` luôn đi kèm `Evidence` có cấu trúc:
 
-`CONSISTENT_STATE` chỉ cho biết edition/channel quan sát được phù hợp với
-firmware OEM; nó không phải `VERIFIED_PROVENANCE`.
+`<scanner-id> | <nguồn>: <tên> [<đường dẫn>] -> <hành động>`
 
-Khi không có artifact, thông báo kết luận là:
+Ví dụ:
 
-> KHÔNG PHÁT HIỆN DẤU VẾT: Trong phạm vi các phép kiểm tra hiện tại, chưa tìm
-> thấy dấu vết có thể kiểm chứng. Kết quả này không xác nhận nguồn gốc license
-> hoặc chứng minh hệ thống chưa từng sử dụng công cụ kích hoạt.
+`scheduled-tasks | ScheduledTask: AutoKMS -> C:\Tools\AutoKMS.exe`
+
+`TraceDetected: KHÔNG` có nghĩa chính xác là scanner không quan sát được bằng
+chứng khớp allowlist. Nếu một nguồn bắt buộc bị từ chối hoặc lỗi,
+`ScanCompleted` đồng thời là `KHÔNG`; lỗi không được biến thành tuyên bố máy
+không có dấu vết.
+
+Các nhãn suy diễn `SUSPICIOUS`, `HIGH_RISK`, `INCONCLUSIVE` và `SCAN_ERROR`
+không được xuất ra GUI, CLI, JSON, CSV hoặc HTML.
 
 ## Phạm vi chỉ đọc
 
@@ -53,20 +52,23 @@ Chế độ này chỉ đọc:
 - PowerShell Operational khi logging tồn tại;
 - lịch sử phát hiện Windows Defender có liên quan;
 - tên Prefetch khớp allowlist;
-- Amcache chỉ khi có thể truy vấn entry allowlist mà không duyệt inventory
-  không liên quan.
+- Amcache khi có thể truy vấn entry allowlist mà không duyệt dữ liệu không liên
+  quan.
 
-Không quét file người dùng, không upload dữ liệu và không xóa hoặc sửa bất kỳ
-thứ gì. Nguồn không có, bị từ chối hoặc không thể truy vấn trong privacy
-boundary được báo `UNKNOWN`.
+Không quét file người dùng, không upload dữ liệu và không xóa hoặc sửa dữ liệu.
+Nguồn không tồn tại hoặc bị từ chối được ghi bằng `Checked: false`; nếu nguồn đó
+được yêu cầu cho lần quét, `ScanCompleted` là `false`.
+
+## NoGenTicket
 
 `NoGenTicket` chỉ được đọc tại:
 
 `HKLM\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform`
 
 Microsoft tài liệu hóa giá trị này là policy **Turn off KMS Client Online AVS
-Validation**. Đây chỉ là evidence không mang tính kết luận; riêng giá trị này
-không thể tạo `HIGH_RISK`:
+Validation**. Nếu giá trị tồn tại, analyzer báo khách quan
+`TraceDetected: true` và đưa đúng registry path/value vào `Evidence`; nó không
+đổi sự kiện đó thành tuyên bố pháp lý về license.
 
 <https://learn.microsoft.com/windows/privacy/manage-connections-from-windows-operating-system-components-to-microsoft-services#19-software-protection-platform>
 
@@ -79,11 +81,10 @@ Các property WMI bản quyền sử dụng bởi scanner được Microsoft mô
 
 <https://learn.microsoft.com/previous-versions/windows/desktop/sppwmi/softwarelicensingproduct>
 
-## Giới hạn
+## Giới hạn quan sát
 
-- Digital license hợp lệ và digital entitlement được tạo qua công cụ bên thứ
-  ba có thể không phân biệt được chỉ từ evidence cục bộ.
-- Công cụ đã gỡ sạch có thể không còn dấu vết.
-- Danh sách đường dẫn/từ khóa là allowlist giới hạn; scanner không quét toàn ổ.
-- Event Log, Amcache hoặc Scheduled Tasks có thể trả `UNKNOWN` khi quyền hiện tại không
-  đủ, nhưng scanner không tự yêu cầu Administrator.
+- Công cụ đã gỡ sạch có thể không còn bằng chứng khớp allowlist.
+- Allowlist không bao phủ mọi công cụ hoặc phiên bản trong tương lai.
+- Trạng thái kích hoạt hiện tại không tự xác minh nguồn gốc digital entitlement.
+- Các giới hạn trên được thể hiện bằng trường nhị phân và coverage cụ thể,
+  không bằng verdict suy diễn.

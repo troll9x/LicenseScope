@@ -31,8 +31,10 @@ namespace LicenseScope.Reporting
             {
                 lines.Add(new CrackTraceDisplayLine
                 {
-                    Text = Prefix(check.Status) + " " + check.Order + ". " +
-                           check.DisplayName.PadRight(20) + ": " + check.Summary,
+                    Text = "[" + YesNo(check.Matched) + "] " + check.Order + ". " +
+                           check.DisplayName.PadRight(20) +
+                           " | Completed: " + YesNo(check.Completed) +
+                           " | Matched: " + YesNo(check.Matched),
                     Status = check.Status
                 });
                 if (check.Evidence.Count > 0)
@@ -53,25 +55,22 @@ namespace LicenseScope.Reporting
             lines.Add(new CrackTraceDisplayLine());
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "ActivationState: " +
-                       CrackTraceVerdictNames.ToMachineValue(analysis.ActivationState),
+                Text = "ScanCompleted: " + YesNo(analysis.ScanCompleted),
                 IsHeading = true
             });
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "TraceVerdict: " +
-                       CrackTraceVerdictNames.ToMachineValue(analysis.TraceVerdict),
+                Text = "ActivationDetected: " + YesNo(analysis.ActivationDetected),
                 Status = VerdictStatus(analysis.TraceVerdict)
             });
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "ProvenanceVerdict: " +
-                       CrackTraceVerdictNames.ToMachineValue(analysis.ProvenanceVerdict),
-                Status = CrackTraceStatus.Unknown
+                Text = "TraceDetected: " + YesNo(analysis.TraceDetected),
+                Status = VerdictStatus(analysis.TraceVerdict)
             });
             lines.Add(new CrackTraceDisplayLine
             {
-                Text = "Confidence: " + analysis.Confidence,
+                Text = "ProvenanceVerified: " + YesNo(analysis.ProvenanceVerified),
                 Status = VerdictStatus(analysis.TraceVerdict)
             });
             lines.Add(new CrackTraceDisplayLine());
@@ -85,8 +84,8 @@ namespace LicenseScope.Reporting
                 lines.Add(new CrackTraceDisplayLine
                 {
                     Text = "- " + coverage.DisplayName + ": " +
-                           CoverageText(coverage.Status),
-                    Status = CoverageLineStatus(coverage.Status)
+                           YesNo(coverage.Checked),
+                    Status = CoverageLineStatus(coverage.Checked)
                 });
             }
             if (analysis.BlindSpots.Count > 0)
@@ -94,7 +93,7 @@ namespace LicenseScope.Reporting
                 lines.Add(new CrackTraceDisplayLine());
                 lines.Add(new CrackTraceDisplayLine
                 {
-                    Text = "Blind spots:",
+                    Text = "Unchecked source details:",
                     IsHeading = true
                 });
                 foreach (var blindSpot in analysis.BlindSpots)
@@ -139,11 +138,11 @@ namespace LicenseScope.Reporting
         {
             switch (status)
             {
-                case CrackTraceStatus.TraceNotFound: return "[+]";
-                case CrackTraceStatus.Suspicious: return "[!]";
-                case CrackTraceStatus.Detected: return "[-]";
-                case CrackTraceStatus.Unknown: return "[?]";
-                default: return "[x]";
+                case CrackTraceStatus.Suspicious:
+                case CrackTraceStatus.Detected:
+                    return "[CÓ]";
+                default:
+                    return "[KHÔNG]";
             }
         }
 
@@ -151,31 +150,22 @@ namespace LicenseScope.Reporting
         {
             switch (verdict)
             {
-                case CrackTraceVerdict.TraceNotFound:
+                case CrackTraceVerdict.TraceDetected:
+                    return CrackTraceStatus.Detected;
+                default:
                     return CrackTraceStatus.TraceNotFound;
-                case CrackTraceVerdict.Suspicious: return CrackTraceStatus.Suspicious;
-                case CrackTraceVerdict.HighRisk: return CrackTraceStatus.Detected;
-                case CrackTraceVerdict.Inconclusive: return CrackTraceStatus.Unknown;
-                default: return CrackTraceStatus.Error;
             }
         }
 
-        private static string CoverageText(DetectionCoverageStatus status)
+        private static string YesNo(bool value)
         {
-            switch (status)
-            {
-                case DetectionCoverageStatus.Checked: return "Checked";
-                case DetectionCoverageStatus.NotChecked: return "Not checked";
-                case DetectionCoverageStatus.NotTechnicallyVerifiable:
-                    return "Not technically verifiable";
-                default: return "Unknown";
-            }
+            return value ? "CÓ" : "KHÔNG";
         }
 
         private static CrackTraceStatus CoverageLineStatus(
-            DetectionCoverageStatus status)
+            bool checkedSource)
         {
-            return status == DetectionCoverageStatus.Checked
+            return checkedSource
                 ? CrackTraceStatus.TraceNotFound
                 : CrackTraceStatus.Unknown;
         }

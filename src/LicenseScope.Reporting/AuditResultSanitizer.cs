@@ -24,6 +24,10 @@ namespace LicenseScope.Reporting
             {
                 StartedAt = analysis.StartedAt,
                 CompletedAt = analysis.CompletedAt,
+                ScanCompleted = analysis.ScanCompleted,
+                ActivationDetected = analysis.ActivationDetected,
+                TraceDetected = analysis.TraceDetected,
+                ProvenanceVerified = analysis.ProvenanceVerified,
                 ActivationState = analysis.ActivationState,
                 TraceVerdict = analysis.TraceVerdict,
                 ProvenanceVerdict = analysis.ProvenanceVerdict,
@@ -34,6 +38,7 @@ namespace LicenseScope.Reporting
                         Id = Clean(x.Id, "Id"),
                         DisplayName = Clean(x.DisplayName, "DisplayName"),
                         Status = x.Status,
+                        Checked = x.Checked,
                         Detail = SensitiveDataMasker.SanitizeDiagnosticText(x.Detail)
                     }).ToArray(),
                 BlindSpots = (analysis.BlindSpots ?? Array.Empty<string>())
@@ -56,6 +61,8 @@ namespace LicenseScope.Reporting
                         DisplayName = Clean(x.DisplayName, "DisplayName"),
                         Status = x.Status,
                         Summary = SensitiveDataMasker.SanitizeDiagnosticText(x.Summary),
+                        Completed = x.Completed,
+                        Matched = x.Matched,
                         Evidence = includeEvidence
                             ? (x.Evidence ?? Array.Empty<string>())
                                 .Select(SensitiveDataMasker.SanitizeDiagnosticText)

@@ -7,7 +7,8 @@ License Scope audit mode is read-only: activation, bypass, public KMS use, telem
 The Windows crack-trace analyzer is separate from those remediation actions and
 is strictly read-only. It does not request elevation, mutate license state,
 write Registry values, modify tasks or services, or delete files. Inaccessible
-sources produce `UNKNOWN`/`INCONCLUSIVE` instead of triggering remediation.
+sources set the binary `ScanCompleted` field to `false`; they never become a
+claim that no trace exists and never trigger remediation.
 Historical event, Defender and allowlisted Prefetch/Amcache inspection is a
 separate Deep forensic scan that is disabled by default and requires explicit
 consent. It does not scan unrelated user files, upload data, or modify/delete
